@@ -1,15 +1,15 @@
 # Stage 1: Build Frontend SPA
-FROM node:20-bullseye-slim AS frontend-builder
+FROM node:20-bookworm-slim AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Production Server
-FROM node:20-bullseye-slim AS runner
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 # Install Chromium, fonts, and required dependencies for Puppeteer PDF rendering
@@ -30,7 +30,7 @@ ENV NODE_ENV=production \
 
 # Install Backend dependencies
 COPY backend/package*.json ./backend/
-RUN cd backend && npm ci --omit=dev
+RUN cd backend && npm install --omit=dev
 
 # Copy backend source code
 COPY backend/ ./backend/
