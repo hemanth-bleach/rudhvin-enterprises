@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: rudhvin-enterprises
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        value: embedded
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@rudhvin.com
+      - key: ADMIN_PASSWORD
+        value: Admin@12345
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+      - key: CHROME_PATH
+        value: /usr/bin/chromium
