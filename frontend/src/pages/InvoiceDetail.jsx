@@ -12,7 +12,7 @@ import {
   FileText
 } from 'lucide-react';
 import api from '../api/axios';
-import { formatINR, formatDate, getStatusBadge } from '../utils/formatters';
+import { formatINR, formatDate, getStatusBadge, numberToWords } from '../utils/formatters';
 import InvoiceDocument from '../components/InvoiceDocument';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import toast from 'react-hot-toast';
@@ -153,6 +153,9 @@ export default function InvoiceDetail() {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
           <div className="text-xs text-slate-500 font-medium">Grand Total</div>
           <div className="text-xl font-bold text-slate-900 mt-0.5">{formatINR(invoice.grandTotal)}</div>
+          <div className="text-[11px] text-slate-500 font-medium italic mt-1 leading-snug">
+            {invoice.amountInWords || numberToWords(invoice.grandTotal)}
+          </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
           <div className="text-xs text-slate-500 font-medium">Amount Paid</div>

@@ -17,7 +17,7 @@ import {
   FileText
 } from 'lucide-react';
 import api from '../api/axios';
-import { formatINR, formatDate, getStatusBadge } from '../utils/formatters';
+import { formatINR, formatDate, getStatusBadge, numberToWords } from '../utils/formatters';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 import toast from 'react-hot-toast';
 
@@ -310,8 +310,14 @@ export default function AllInvoices() {
                       <td className="py-3.5 px-3 text-right font-medium text-slate-700">
                         {formatINR(inv.taxBreakdown?.totalTax || 0)}
                       </td>
-                      <td className="py-3.5 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
-                        {formatINR(inv.grandTotal)}
+                      <td className="py-3.5 px-3 text-right whitespace-nowrap">
+                        <div className="font-bold text-slate-900">{formatINR(inv.grandTotal)}</div>
+                        <div
+                          className="text-[10px] text-slate-400 font-normal truncate max-w-[140px] ml-auto cursor-help"
+                          title={inv.amountInWords || numberToWords(inv.grandTotal)}
+                        >
+                          {inv.amountInWords || numberToWords(inv.grandTotal)}
+                        </div>
                       </td>
                       <td className="py-3.5 px-3 text-right font-semibold text-emerald-600 whitespace-nowrap">
                         {formatINR(inv.amountPaid)}

@@ -15,7 +15,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import api from '../api/axios';
-import { formatINR } from '../utils/formatters';
+import { formatINR, numberToWords } from '../utils/formatters';
 import InvoiceDocument from '../components/InvoiceDocument';
 import CustomerModal from '../components/CustomerModal';
 import toast from 'react-hot-toast';
@@ -262,7 +262,7 @@ export default function CreateInvoice() {
     taxableAmount: totals.taxableAmount,
     taxBreakdown: totals.taxBreakdown,
     grandTotal: totals.grandTotal,
-    amountInWords: ''
+    amountInWords: numberToWords(totals.grandTotal)
   };
 
   // Submit invoice (draft or issued)
@@ -636,6 +636,14 @@ export default function CreateInvoice() {
                   <span>Grand Total:</span>
                   <span className="text-blue-600 text-base">{formatINR(totals.grandTotal)}</span>
                 </div>
+                <div className="pt-2 border-t border-slate-200/80">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider shrink-0 mt-0.5">Total in Words:</span>
+                    <span className="text-xs font-bold text-slate-800 text-right italic leading-relaxed">
+                      {numberToWords(totals.grandTotal)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
@@ -770,11 +778,15 @@ export default function CreateInvoice() {
               </div>
 
               {/* Review summary info */}
-              <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-xl text-xs space-y-1 text-slate-700">
+              <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-xl text-xs space-y-1.5 text-slate-700">
                 <div className="font-bold text-blue-900 mb-1">Review Confirmation</div>
                 <div>Billed To: <span className="font-semibold">{selectedCustomer?.organization || selectedCustomer?.name}</span></div>
                 <div>Line Items: <span className="font-semibold">{items.length} items</span></div>
                 <div>Final Grand Total: <span className="font-extrabold text-blue-800 text-sm">{formatINR(totals.grandTotal)}</span></div>
+                <div className="pt-1.5 border-t border-blue-200/60 mt-1.5 text-blue-950">
+                  <span className="font-semibold text-blue-900">Total in Words: </span>
+                  <span className="font-bold italic">{numberToWords(totals.grandTotal)}</span>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
@@ -824,6 +836,10 @@ export default function CreateInvoice() {
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
                   Customer: <span className="font-semibold text-slate-800">{createdInvoice.customerSnapshot?.name}</span> | Grand Total: <span className="font-bold text-emerald-600">{formatINR(createdInvoice.grandTotal)}</span>
+                </p>
+                <p className="text-xs text-slate-600 font-medium italic mt-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-w-lg mx-auto">
+                  <span className="font-semibold text-slate-700 not-italic">Total in Words: </span>
+                  {createdInvoice.amountInWords || numberToWords(createdInvoice.grandTotal)}
                 </p>
               </div>
 

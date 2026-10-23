@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatINR, formatDate } from '../utils/formatters';
+import { formatINR, formatDate, numberToWords } from '../utils/formatters';
 
 export default function InvoiceDocument({ invoice, className = '' }) {
   if (!invoice) return null;
@@ -234,7 +234,7 @@ export default function InvoiceDocument({ invoice, className = '' }) {
           {/* Amount in Words */}
           <div className="mt-2.5 p-2 bg-slate-50 border border-slate-300 text-[11px] rounded-xs font-semibold text-slate-800">
             <span>Amount Chargeable (in words): </span>
-            <span className="font-extrabold text-slate-900">{invoice.amountInWords || 'Zero Rupees Only'}</span>
+            <span className="font-extrabold text-slate-900">{invoice.amountInWords || numberToWords(invoice.grandTotal)}</span>
           </div>
         </div>
 

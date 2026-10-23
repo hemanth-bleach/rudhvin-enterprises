@@ -6,6 +6,7 @@ import { getNextInvoiceNumber, peekNextInvoiceNumber, calculateInvoiceTotals } f
 import { generateInvoicePdfBuffer } from '../services/pdfService.js';
 import { getInvoiceHtml } from '../templates/invoiceTemplate.js';
 import { logAudit } from '../services/auditService.js';
+import { numberToWords } from '../utils/numberToWords.js';
 
 export const getInvoices = async (req, res, next) => {
   try {
@@ -66,11 +67,12 @@ export const getInvoices = async (req, res, next) => {
         .sort({ invoiceDate: -1 })
         .lean();
 
-      let csv = 'Invoice No,Date,Customer,Subtotal,Tax,Grand Total,Amount Paid,Balance Due,Status,Payment Status\n';
+      let csv = 'Invoice No,Date,Customer,Subtotal,Tax,Grand Total,Total in Words,Amount Paid,Balance Due,Status,Payment Status\n';
       allInvoices.forEach(inv => {
         const custName = `"${(inv.customerSnapshot?.name || inv.customer?.name || '').replace(/"/g, '""')}"`;
+        const wordsStr = `"${(inv.amountInWords || numberToWords(inv.grandTotal) || '').replace(/"/g, '""')}"`;
         const dateStr = inv.invoiceDate ? new Date(inv.invoiceDate).toISOString().split('T')[0] : '';
-        csv += `${inv.invoiceNumber},${dateStr},${custName},${inv.subtotal},${inv.taxBreakdown?.totalTax || 0},${inv.grandTotal},${inv.amountPaid},${inv.balanceDue},${inv.status},${inv.paymentStatus}\n`;
+        csv += `${inv.invoiceNumber},${dateStr},${custName},${inv.subtotal},${inv.taxBreakdown?.totalTax || 0},${inv.grandTotal},${wordsStr},${inv.amountPaid},${inv.balanceDue},${inv.status},${inv.paymentStatus}\n`;
       });
 
       res.setHeader('Content-Type', 'text/csv');
@@ -100,7 +102,10 @@ export const getInvoices = async (req, res, next) => {
       total,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
-      data: invoices
+      data: invoices.map(inv => ({
+        ...inv,
+        amountInWords: inv.amountInWords || numberToWords(inv.grandTotal)
+      }))
     });
   } catch (error) {
     next(error);
@@ -125,6 +130,7 @@ export const getInvoiceById = async (req, res, next) => {
       success: true,
       data: {
         ...invoice,
+        amountInWords: invoice.amountInWords || numberToWords(invoice.grandTotal),
         payments
       }
     });

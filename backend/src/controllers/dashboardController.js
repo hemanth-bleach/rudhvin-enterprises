@@ -1,6 +1,7 @@
 import { Invoice } from '../models/Invoice.js';
 import { Customer } from '../models/Customer.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { numberToWords } from '../utils/numberToWords.js';
 
 export const getStats = async (req, res, next) => {
   try {
@@ -141,8 +142,11 @@ export const getStats = async (req, res, next) => {
       draftCount,
       cancelledCount,
       totalBilledAmount: fin.totalBilledAmount,
+      totalBilledAmountInWords: numberToWords(fin.totalBilledAmount),
       totalPaidAmount: fin.totalPaidAmount,
+      totalPaidAmountInWords: numberToWords(fin.totalPaidAmount),
       pendingAmount: fin.pendingAmount,
+      pendingAmountInWords: numberToWords(fin.pendingAmount),
       pendingInvoicesCount: fin.pendingInvoicesCount,
       paidInvoicesCount: fin.paidInvoicesCount,
       totalCustomers,
@@ -207,7 +211,10 @@ export const getRecentInvoices = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: invoices
+      data: invoices.map(inv => ({
+        ...inv,
+        amountInWords: inv.amountInWords || numberToWords(inv.grandTotal)
+      }))
     });
   } catch (error) {
     next(error);

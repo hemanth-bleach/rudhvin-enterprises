@@ -20,7 +20,7 @@ import {
   TrendingDown
 } from 'lucide-react';
 import api from '../api/axios';
-import { formatINR, formatDate, getStatusBadge } from '../utils/formatters';
+import { formatINR, formatDate, getStatusBadge, numberToWords } from '../utils/formatters';
 import CustomerModal from '../components/CustomerModal';
 import ProductModal from '../components/ProductModal';
 import RecordPaymentModal from '../components/RecordPaymentModal';
@@ -231,7 +231,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div>
-              <div className="text-3xl font-black text-slate-900 tracking-tight">
+              <div className="text-3xl font-black text-slate-900 tracking-tight" title={numberToWords(statsData?.totalBilledAmount ?? 0)}>
                 {formatINR(statsData?.totalBilledAmount ?? 0, false)}
               </div>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 mt-1">
@@ -402,8 +402,14 @@ export default function Dashboard() {
                           <td className="py-3 px-3 font-semibold text-slate-800 max-w-[180px] truncate">
                             {inv.customerSnapshot?.organization || inv.customerSnapshot?.name || inv.customer?.name || 'Customer'}
                           </td>
-                          <td className="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">
-                            {formatINR(inv.grandTotal)}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <div className="font-bold text-slate-900">{formatINR(inv.grandTotal)}</div>
+                            <div
+                              className="text-[10px] text-slate-400 font-normal truncate max-w-[140px] cursor-help"
+                              title={inv.amountInWords || numberToWords(inv.grandTotal)}
+                            >
+                              {inv.amountInWords || numberToWords(inv.grandTotal)}
+                            </div>
                           </td>
                           <td className="py-3 px-3 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badge.bg}`}>

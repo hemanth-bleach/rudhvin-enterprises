@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, IndianRupee } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { formatINR } from '../utils/formatters';
+import { formatINR, numberToWords } from '../utils/formatters';
 
 export default function RecordPaymentModal({ invoice, isOpen, onClose, onSuccess }) {
   const [amount, setAmount] = useState(invoice?.balanceDue || '');
@@ -70,18 +70,24 @@ export default function RecordPaymentModal({ invoice, isOpen, onClose, onSuccess
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Summary Box */}
-          <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">Grand Total</div>
-              <div className="text-sm font-bold text-slate-800">{formatINR(invoice.grandTotal)}</div>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <div className="text-[11px] text-slate-500 font-medium">Grand Total</div>
+                <div className="text-sm font-bold text-slate-800">{formatINR(invoice.grandTotal)}</div>
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-medium">Already Paid</div>
+                <div className="text-sm font-bold text-emerald-600">{formatINR(invoice.amountPaid)}</div>
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-medium">Balance Due</div>
+                <div className="text-sm font-bold text-rose-600">{formatINR(invoice.balanceDue)}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">Already Paid</div>
-              <div className="text-sm font-bold text-emerald-600">{formatINR(invoice.amountPaid)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] text-slate-500 font-medium">Balance Due</div>
-              <div className="text-sm font-bold text-rose-600">{formatINR(invoice.balanceDue)}</div>
+            <div className="pt-2 mt-2 border-t border-slate-200/80 text-[11px] text-slate-600 italic">
+              <span className="font-semibold text-slate-700 not-italic">Total in Words: </span>
+              {invoice.amountInWords || numberToWords(invoice.grandTotal)}
             </div>
           </div>
 
@@ -102,6 +108,12 @@ export default function RecordPaymentModal({ invoice, isOpen, onClose, onSuccess
                 className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
+            {Number(amount) > 0 && (
+              <div className="mt-1.5 p-2 bg-blue-50/70 border border-blue-100 rounded-lg text-xs text-blue-900 italic">
+                <span className="font-semibold text-blue-800 not-italic">Amount in Words: </span>
+                {numberToWords(Number(amount))}
+              </div>
+            )}
             <div className="flex justify-between items-center mt-1">
               <button
                 type="button"

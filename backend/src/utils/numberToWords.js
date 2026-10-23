@@ -1,5 +1,9 @@
 export function numberToWords(num) {
-  if (num === null || num === undefined || isNaN(num)) return '';
+  if (num === null || num === undefined || num === '') return '';
+  num = Number(num);
+  if (isNaN(num)) return '';
+  if (num < 0) return 'Minus ' + numberToWords(Math.abs(num));
+  if (num === 0) return 'Zero Rupees Only';
 
   const a = [
     '', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ',
@@ -25,44 +29,51 @@ export function numberToWords(num) {
     return str;
   };
 
-  num = Number(num);
-  if (num === 0) return 'Zero Rupees Only';
+  const convertIndianNumber = (n) => {
+    let str = '';
+    const crore = Math.floor(n / 10000000);
+    if (crore > 0) {
+      str += convertIndianNumber(crore).trim() + ' Crore ';
+      n %= 10000000;
+    }
+    const lakh = Math.floor(n / 100000);
+    if (lakh > 0) {
+      str += convertTwoDigits(lakh) + 'Lakh ';
+      n %= 100000;
+    }
+    const thousand = Math.floor(n / 1000);
+    if (thousand > 0) {
+      str += convertTwoDigits(thousand) + 'Thousand ';
+      n %= 1000;
+    }
+    if (n > 0) {
+      str += convertThreeDigits(n);
+    }
+    return str;
+  };
 
-  const parts = num.toFixed(2).split('.');
-  let integerPart = parseInt(parts[0], 10);
+  const parts = Number(num).toFixed(2).split('.');
+  const integerPart = parseInt(parts[0], 10);
   const decimalPart = parseInt(parts[1], 10);
 
   let words = '';
-
-  // Crores (10,000,000)
-  if (Math.floor(integerPart / 10000000) > 0) {
-    words += convertTwoDigits(Math.floor(integerPart / 10000000)) + 'Crore ';
-    integerPart %= 10000000;
-  }
-
-  // Lakhs (100,000)
-  if (Math.floor(integerPart / 100000) > 0) {
-    words += convertTwoDigits(Math.floor(integerPart / 100000)) + 'Lakh ';
-    integerPart %= 100000;
-  }
-
-  // Thousands (1,000)
-  if (Math.floor(integerPart / 1000) > 0) {
-    words += convertTwoDigits(Math.floor(integerPart / 1000)) + 'Thousand ';
-    integerPart %= 1000;
-  }
-
-  // Hundreds and remainder
   if (integerPart > 0) {
-    words += convertThreeDigits(integerPart);
+    const intWords = convertIndianNumber(integerPart).trim();
+    words += intWords + (integerPart === 1 ? ' Rupee' : ' Rupees');
   }
-
-  words = words.trim() + ' Rupees';
 
   if (decimalPart > 0) {
-    words += ' and ' + convertTwoDigits(decimalPart).trim() + ' Paise';
+    const decWords = convertTwoDigits(decimalPart).trim();
+    if (words) {
+      words += ' and ' + decWords + (decimalPart === 1 ? ' Paisa' : ' Paise');
+    } else {
+      words += decWords + (decimalPart === 1 ? ' Paisa' : ' Paise');
+    }
   }
 
-  words += ' Only';
-  return words.replace(/\s+/g, ' ');
+  if (!words) {
+    words = 'Zero Rupees';
+  }
+
+  return (words + ' Only').replace(/\s+/g, ' ').trim();
 }
