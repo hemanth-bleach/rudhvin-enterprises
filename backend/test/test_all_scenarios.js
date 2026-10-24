@@ -64,9 +64,9 @@ async function runAllTests() {
   // Start HTTP server on random free port
   server = http.createServer(app);
   await new Promise((resolve) => {
-    server.listen(0, () => {
+    server.listen(0, '127.0.0.1', () => {
       port = server.address().port;
-      baseUrl = `http://localhost:${port}/api`;
+      baseUrl = `http://127.0.0.1:${port}/api`;
       console.log(`Server listening on port ${port}\n`);
       resolve();
     });
@@ -95,7 +95,7 @@ async function runAllTests() {
     staffToken = staffLogin.data?.token;
 
     // Create intra-state customer (AP, 37)
-    const custRes = await apiRequest('/customers', {
+    let custRes = await apiRequest('/customers', {
       method: 'POST',
       headers: { Authorization: `Bearer ${adminToken}` },
       body: {
@@ -107,10 +107,14 @@ async function runAllTests() {
         stateCode: '37'
       }
     });
-    testCustomer = custRes.data.data;
+    if (custRes.status === 201) {
+      testCustomer = custRes.data.data;
+    } else {
+      testCustomer = await Customer.findOne({ gstin: '37AAAAA0000A1Z5', isDeleted: false });
+    }
 
     // Create inter-state customer (Telangana, 36)
-    const interRes = await apiRequest('/customers', {
+    let interRes = await apiRequest('/customers', {
       method: 'POST',
       headers: { Authorization: `Bearer ${adminToken}` },
       body: {
@@ -122,7 +126,11 @@ async function runAllTests() {
         stateCode: '36'
       }
     });
-    interStateCustomer = interRes.data.data;
+    if (interRes.status === 201) {
+      interStateCustomer = interRes.data.data;
+    } else {
+      interStateCustomer = await Customer.findOne({ gstin: '36BBBBB0000B1Z8', isDeleted: false });
+    }
 
     // -------------------------------------------------------------
     // SCENARIO 1: Create an invoice with one item and 0% GST
