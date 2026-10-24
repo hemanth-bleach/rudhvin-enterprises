@@ -26,18 +26,22 @@ async function testPersistence() {
   console.log(`   Sequences in store: ${data.invoicesequences.length}`);
   console.log(`   Audit logs in store: ${data.auditlogs.length}`);
 
-  // Health and stats check via HTTP
-  const statsRes = await fetch('http://localhost:5000/api/dashboard/stats', {
-    headers: {
-      Authorization: `Bearer ${generateQuickToken()}`
-    }
-  });
+  // Health and stats check via HTTP (if server is running)
+  try {
+    const statsRes = await fetch('http://localhost:5000/api/dashboard/stats', {
+      headers: {
+        Authorization: `Bearer ${generateQuickToken()}`
+      }
+    });
 
-  if (statsRes.status === 200) {
-    const json = await statsRes.json();
-    console.log('✅ Live API confirms loaded stats:', json.data);
-  } else {
-    console.log(`Note: Stats returned status ${statsRes.status}`);
+    if (statsRes.status === 200) {
+      const json = await statsRes.json();
+      console.log('✅ Live API confirms loaded stats:', json.data);
+    } else {
+      console.log(`Note: Stats returned status ${statsRes.status}`);
+    }
+  } catch (err) {
+    console.log('ℹ️ Server is not running on port 5000 (standalone disk check passed)');
   }
 }
 

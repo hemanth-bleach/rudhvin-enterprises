@@ -73,7 +73,7 @@ export function numberToWords(num) {
   num = Number(num);
   if (isNaN(num)) return '';
   if (num < 0) return 'Minus ' + numberToWords(Math.abs(num));
-  if (num === 0) return 'Zero Rupees Only';
+  if (num === 0) return 'Rupees Zero Only';
 
   const a = [
     '', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ',
@@ -126,24 +126,26 @@ export function numberToWords(num) {
   const integerPart = parseInt(parts[0], 10);
   const decimalPart = parseInt(parts[1], 10);
 
-  let words = '';
+  let result = '';
   if (integerPart > 0) {
     const intWords = convertIndianNumber(integerPart).trim();
-    words += intWords + (integerPart === 1 ? ' Rupee' : ' Rupees');
+    const prefix = integerPart === 1 ? 'Rupee ' : 'Rupees ';
+    result = prefix + intWords;
   }
 
   if (decimalPart > 0) {
     const decWords = convertTwoDigits(decimalPart).trim();
-    if (words) {
-      words += ' and ' + decWords + (decimalPart === 1 ? ' Paisa' : ' Paise');
+    const paiseText = decWords + (decimalPart === 1 ? ' Paisa' : ' Paise');
+    if (result) {
+      result += ' and ' + paiseText;
     } else {
-      words += decWords + (decimalPart === 1 ? ' Paisa' : ' Paise');
+      result = paiseText;
     }
   }
 
-  if (!words) {
-    words = 'Zero Rupees';
+  if (!result) {
+    result = 'Rupees Zero';
   }
 
-  return (words + ' Only').replace(/\s+/g, ' ').trim();
+  return (result + ' Only').replace(/\s+/g, ' ').trim();
 }

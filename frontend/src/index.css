@@ -26,6 +26,16 @@
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12px;
+  }
   body * {
     visibility: hidden;
   }
@@ -36,9 +46,14 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
-  .no-print {
+  nav, aside, header, .no-print {
     display: none !important;
   }
 }

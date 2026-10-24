@@ -9,7 +9,8 @@ import {
   XCircle,
   Clock,
   CheckCircle,
-  FileText
+  FileText,
+  Edit
 } from 'lucide-react';
 import api from '../api/axios';
 import { formatINR, formatDate, getStatusBadge, numberToWords } from '../utils/formatters';
@@ -110,6 +111,16 @@ export default function InvoiceDetail() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {invoice.status !== 'cancelled' && (
+            <Link
+              to={`/invoices/${invoice._id}/edit`}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs"
+            >
+              <Edit className="w-4 h-4 text-indigo-600" />
+              <span>{invoice.status === 'draft' ? 'Edit Draft' : 'Amend Invoice'}</span>
+            </Link>
+          )}
+
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs"

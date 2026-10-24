@@ -2,9 +2,9 @@ import { numberToWords } from '../utils/numberToWords.js';
 
 export function getInvoiceHtml(invoice) {
   const seller = invoice.sellerSnapshot || {};
-  const customer = invoice.customerSnapshot || {};
+  const customer = invoice.customerSnapshot || invoice.customer || {};
   const bank = seller.bankDetails || {};
-  const items = invoice.lineItems || [];
+  const items = invoice.items || invoice.lineItems || [];
 
   const invoiceDateStr = invoice.invoiceDate
     ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB')
@@ -21,62 +21,105 @@ export function getInvoiceHtml(invoice) {
   };
 
   const amountInWords = invoice.amountInWords || numberToWords(invoice.grandTotal);
+  const isInterState = Boolean(invoice.taxBreakdown?.isInterState);
 
+  // Six columns in exact order:
+  // 1. S.No.
+  // 2. Description of Goods
+  // 3. HSN
+  // 4. Qty
+  // 5. Taxable Value (₹)
+  // 6. Line Total (₹)
   const itemsRows = items
     .map(
-      (item, idx) => `
-      <tr>
-        <td style="text-align: center; border: 1px solid #111; padding: 6px 4px; font-size: 13px;">${item.serialNumber || idx + 1}</td>
-        <td style="border: 1px solid #111; padding: 6px 8px; font-size: 13px;">${item.description || ''}</td>
-        <td style="text-align: center; border: 1px solid #111; padding: 6px 4px; font-size: 13px;">${item.hsnSac || ''}</td>
-        <td style="text-align: center; border: 1px solid #111; padding: 6px 4px; font-size: 13px;">${item.quantity || 0} ${item.unit || ''}</td>
-        <td style="text-align: right; border: 1px solid #111; padding: 6px 8px; font-size: 13px;">${formatCurrency(item.rate)}</td>
-        <td style="text-align: right; border: 1px solid #111; padding: 6px 8px; font-size: 13px;">${formatCurrency(item.totalAmount || (item.quantity * item.rate))}</td>
-      </tr>
-    `
+      (item, idx) => {
+        const taxableVal = item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount || (item.quantity * (item.unitRate || item.rate || 0)));
+        const lineTot = item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || taxableVal);
+        const qtyStr = `${item.quantity} ${item.unit || 'PCS'}`;
+
+        return `
+        <tr>
+          <td style="text-align: center; border: 1px solid #0f172a; padding: 7px 4px; font-size: 12px; font-weight: 500;">${item.serialNumber || idx + 1}</td>
+          <td style="border: 1px solid #0f172a; padding: 7px 10px; font-size: 12px; font-weight: 500; word-break: break-word;">${item.description || ''}</td>
+          <td style="text-align: center; border: 1px solid #0f172a; padding: 7px 4px; font-size: 12px;">${item.hsnSac || item.hsn || '-'}</td>
+          <td style="text-align: center; border: 1px solid #0f172a; padding: 7px 4px; font-size: 12px;">${qtyStr}</td>
+          <td style="text-align: right; border: 1px solid #0f172a; padding: 7px 8px; font-size: 12px; white-space: nowrap;">₹${formatCurrency(taxableVal)}</td>
+          <td style="text-align: right; border: 1px solid #0f172a; padding: 7px 8px; font-size: 12px; font-weight: 600; white-space: nowrap;">₹${formatCurrency(lineTot)}</td>
+        </tr>
+      `;
+      }
     )
     .join('');
 
-  // Pad empty rows if fewer than 5 items to match formal invoice look
-  const emptyRowsCount = Math.max(0, 5 - items.length);
+  // Pad empty rows if fewer than 4 items to maintain clean layout
+  const emptyRowsCount = Math.max(0, 4 - items.length);
   const emptyRows = Array.from({ length: emptyRowsCount })
     .map(
       () => `
       <tr>
-        <td style="border: 1px solid #111; padding: 12px 4px;">&nbsp;</td>
-        <td style="border: 1px solid #111; padding: 12px 8px;">&nbsp;</td>
-        <td style="border: 1px solid #111; padding: 12px 4px;">&nbsp;</td>
-        <td style="border: 1px solid #111; padding: 12px 4px;">&nbsp;</td>
-        <td style="border: 1px solid #111; padding: 12px 8px;">&nbsp;</td>
-        <td style="border: 1px solid #111; padding: 12px 8px;">&nbsp;</td>
+        <td style="border: 1px solid #0f172a; padding: 10px 4px;">&nbsp;</td>
+        <td style="border: 1px solid #0f172a; padding: 10px 8px;">&nbsp;</td>
+        <td style="border: 1px solid #0f172a; padding: 10px 4px;">&nbsp;</td>
+        <td style="border: 1px solid #0f172a; padding: 10px 4px;">&nbsp;</td>
+        <td style="border: 1px solid #0f172a; padding: 10px 8px;">&nbsp;</td>
+        <td style="border: 1px solid #0f172a; padding: 10px 8px;">&nbsp;</td>
       </tr>
     `
     )
     .join('');
 
-  // Tax breakdown rows
-  let taxRows = '';
-  if (invoice.taxBreakdown && invoice.taxBreakdown.totalTax > 0) {
-    if (invoice.taxBreakdown.isInterState) {
-      taxRows = `
-        <tr>
-          <td colspan="5" style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; font-weight: bold;">IGST (${invoice.taxBreakdown.igstRate}%)</td>
-          <td style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; font-weight: bold;">₹${formatCurrency(invoice.taxBreakdown.igstAmount)}</td>
-        </tr>
-      `;
-    } else {
-      taxRows = `
-        <tr>
-          <td colspan="5" style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; font-weight: bold;">CGST (${invoice.taxBreakdown.cgstRate}%)</td>
-          <td style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; font-weight: bold;">₹${formatCurrency(invoice.taxBreakdown.cgstAmount)}</td>
-        </tr>
-        <tr>
-          <td colspan="5" style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; font-weight: bold;">SGST (${invoice.taxBreakdown.sgstRate}%)</td>
-          <td style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; font-weight: bold;">₹${formatCurrency(invoice.taxBreakdown.sgstAmount)}</td>
-        </tr>
-      `;
-    }
+  // GST Calculation rows
+  const taxableValueTotal = invoice.taxableValue !== undefined ? invoice.taxableValue : (invoice.taxableAmount || invoice.subtotal || 0);
+  const totalGst = invoice.totalGst !== undefined ? invoice.totalGst : (invoice.taxBreakdown?.totalTax || 0);
+  const primaryTaxRate = invoice.taxBreakdown?.taxRate || 0;
+
+  let gstRows = '';
+  if (isInterState) {
+    gstRows = `
+      <tr>
+        <td colspan="5" style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 600; background-color: #f8fafc;">
+          IGST (${primaryTaxRate}%)
+        </td>
+        <td style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap;">
+          ₹${formatCurrency(invoice.igstAmount || totalGst)}
+        </td>
+      </tr>
+    `;
+  } else {
+    const cgstRate = invoice.taxBreakdown?.cgstRate !== undefined ? invoice.taxBreakdown.cgstRate : primaryTaxRate / 2;
+    const sgstRate = invoice.taxBreakdown?.sgstRate !== undefined ? invoice.taxBreakdown.sgstRate : primaryTaxRate / 2;
+    const cgstAmount = invoice.cgstAmount !== undefined ? invoice.cgstAmount : (invoice.taxBreakdown?.cgstAmount || totalGst / 2);
+    const sgstAmount = invoice.sgstAmount !== undefined ? invoice.sgstAmount : (invoice.taxBreakdown?.sgstAmount || totalGst / 2);
+
+    gstRows = `
+      <tr>
+        <td colspan="5" style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 600; background-color: #f8fafc;">
+          CGST (${cgstRate}%)
+        </td>
+        <td style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap;">
+          ₹${formatCurrency(cgstAmount)}
+        </td>
+      </tr>
+      <tr>
+        <td colspan="5" style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 600; background-color: #f8fafc;">
+          SGST (${sgstRate}%)
+        </td>
+        <td style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap;">
+          ₹${formatCurrency(sgstAmount)}
+        </td>
+      </tr>
+    `;
   }
+
+  const sampleBanner = invoice.isSample
+    ? `<div style="background-color: #fef2f2; border: 1.5px dashed #dc2626; color: #dc2626; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-align: center; padding: 5px; margin-bottom: 8px; text-transform: uppercase;">
+        SAMPLE TAX INVOICE — NOT FOR PAYMENT
+       </div>`
+    : '';
+
+  const sampleWatermark = invoice.isSample
+    ? `<div class="watermark">SAMPLE INVOICE<br>NOT FOR PAYMENT</div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -85,8 +128,8 @@ export function getInvoiceHtml(invoice) {
   <title>Invoice ${invoice.invoiceNumber}</title>
   <style>
     @page {
-      size: A4;
-      margin: 12mm 15mm 15mm 15mm;
+      size: A4 portrait;
+      margin: 10mm 12mm 12mm 12mm;
     }
     * {
       box-sizing: border-box;
@@ -97,336 +140,353 @@ export function getInvoiceHtml(invoice) {
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
       padding: 0;
-      color: #111;
+      color: #0f172a;
       background: #fff;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.35;
     }
-    .invoice-container {
+    .invoice-wrapper {
       width: 100%;
-      max-width: 800px;
+      max-width: 820px;
       margin: 0 auto;
       border: 1.5px solid #0f172a;
-      padding: 18px 24px;
+      padding: 16px 20px;
       position: relative;
       background-color: #ffffff;
-      min-height: 1050px;
+      min-height: 1040px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
-    /* Subtle watermark */
     .watermark {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 60px;
+      font-size: 48px;
       font-weight: 900;
-      color: rgba(15, 23, 42, 0.04);
+      color: rgba(220, 38, 38, 0.08);
       pointer-events: none;
       z-index: 0;
       text-transform: uppercase;
-      letter-spacing: 6px;
+      letter-spacing: 4px;
       text-align: center;
-      line-height: 1.2;
+      line-height: 1.25;
+      border: 4px dashed rgba(220, 38, 38, 0.12);
+      padding: 20px 40px;
     }
-    .header-table {
+    
+    /* Company Header */
+    .company-header-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       position: relative;
       z-index: 1;
-    }
-    .logo-cell {
-      width: 160px;
-      vertical-align: middle;
-      text-align: left;
-    }
-    .company-info-cell {
-      vertical-align: middle;
-      text-align: center;
-      padding-left: 10px;
     }
     .company-title {
-      color: #DC2626;
+      color: #0f172a;
       font-size: 24px;
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: 0.5px;
-      margin: 0 0 4px 0;
+      margin: 0 0 2px 0;
       text-transform: uppercase;
+      text-align: center;
       font-family: 'Arial Black', Arial, sans-serif;
     }
-    .company-details {
-      color: #0284C7;
+    .company-subtitle {
+      color: #dc2626;
       font-size: 11px;
-      font-weight: 600;
-      line-height: 1.35;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 3px;
+    }
+    .company-address {
+      color: #334155;
+      font-size: 11px;
+      font-weight: 500;
+      text-align: center;
+      margin: 0 0 2px 0;
+      line-height: 1.3;
+    }
+    .company-contacts {
+      color: #1e3a8a;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-align: center;
       margin: 0;
     }
-    .company-gstin {
-      color: #0284C7;
-      font-size: 12px;
-      font-weight: 700;
-      margin-top: 3px;
+    .header-rule {
+      border-top: 1.5px solid #0f172a;
+      margin: 8px 0 10px 0;
     }
-    .divider {
-      border-top: 1.5px solid #111;
-      margin: 6px 0 10px 0;
-    }
-    .meta-table {
+
+    /* Invoice Information Section (Bordered 2-column layout) */
+    .info-table {
       width: 100%;
+      border: 1.5px solid #0f172a;
       border-collapse: collapse;
       margin-bottom: 12px;
       position: relative;
       z-index: 1;
     }
-    .bill-to-cell {
-      width: 58%;
+    .info-left-col {
+      width: 44%;
       vertical-align: top;
-      font-size: 12px;
-      line-height: 1.4;
-      padding-right: 15px;
+      border-right: 1.5px solid #0f172a;
+      padding: 10px 12px;
+      background-color: #fafafb;
     }
-    .bill-to-title {
-      font-weight: bold;
-      margin-bottom: 4px;
-      font-size: 12px;
-    }
-    .customer-name {
-      font-weight: bold;
-      color: #0f172a;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-      font-size: 13px;
-    }
-    .invoice-meta-cell {
-      width: 42%;
+    .info-right-col {
+      width: 56%;
       vertical-align: top;
-      text-align: right;
+      padding: 10px 12px;
+    }
+    .info-field-row {
+      margin-bottom: 5px;
       font-size: 12px;
     }
-    .invoice-meta-box {
-      border: 1px solid #111;
-      padding: 8px 12px;
+    .info-label {
+      font-weight: 700;
+      color: #334155;
       display: inline-block;
-      text-align: left;
-      min-width: 200px;
-      background: #fafafa;
+      min-width: 105px;
     }
-    .invoice-banner {
-      background: linear-gradient(90deg, #fef3c7 0%, #ffedd5 50%, #fef3c7 100%);
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      text-align: center;
-      padding: 5px;
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      color: #1e293b;
-      margin-bottom: 14px;
-      text-transform: uppercase;
-      position: relative;
-      z-index: 1;
+    .info-val {
+      font-weight: 600;
+      color: #0f172a;
     }
+
+    /* Items Table */
     .items-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       position: relative;
       z-index: 1;
+      page-break-inside: auto;
+    }
+    .items-table tr {
+      page-break-inside: avoid;
+    }
+    .items-table thead {
+      display: table-header-group;
     }
     .items-table th {
-      background: #f1f5f9;
-      border: 1px solid #111;
-      padding: 7px 6px;
-      font-size: 12px;
-      font-weight: bold;
-      text-align: center;
-      color: #0f172a;
+      background-color: #1E3A8A;
+      color: #ffffff;
+      border: 1px solid #0f172a;
+      padding: 8px 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
     }
-    .amount-words-section {
-      margin: 10px 0 16px 0;
-      font-size: 12px;
-      font-weight: bold;
-      padding: 6px 10px;
+
+    /* Totals & Amount in Words */
+    .amount-words-box {
+      border: 1px solid #0f172a;
       background-color: #f8fafc;
-      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      font-size: 11.5px;
       position: relative;
       z-index: 1;
     }
-    .bottom-section {
+
+    /* Bottom Section */
+    .bottom-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      margin-top: 10px;
       position: relative;
       z-index: 1;
     }
-    .bank-details-cell {
-      width: 55%;
-      vertical-align: bottom;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    .signatory-cell {
-      width: 45%;
-      vertical-align: bottom;
-      text-align: right;
-      font-size: 12px;
-      line-height: 1.4;
-    }
     .bank-box {
-      border: 1px solid #334155;
+      border: 1.2px solid #334155;
       padding: 8px 12px;
-      background: #f8fafc;
+      background-color: #f8fafc;
+      font-size: 11px;
+      line-height: 1.45;
     }
-    .bank-title {
-      font-weight: bold;
-      text-decoration: underline;
-      margin-bottom: 4px;
-      color: #0f172a;
-    }
-    .signatory-title {
-      font-weight: bold;
-      margin-bottom: 35px;
-      color: #0f172a;
-    }
-    .signatory-company {
-      font-weight: bold;
-      color: #DC2626;
-      font-size: 13px;
+    .signatory-box {
+      text-align: right;
+      padding: 4px 10px;
+      font-size: 11px;
+      line-height: 1.4;
     }
     .footer-note {
       text-align: center;
-      font-size: 11px;
+      font-size: 10.5px;
       color: #64748b;
-      margin-top: 15px;
+      margin-top: 12px;
       border-top: 1px dashed #cbd5e1;
-      padding-top: 6px;
+      padding-top: 5px;
     }
   </style>
 </head>
 <body>
-  <div class="invoice-container">
-    <div class="watermark">
-      RUDHVIN<br>ENTERPRISES
-    </div>
+  <div class="invoice-wrapper">
+    ${sampleWatermark}
 
     <div>
-      <!-- Header -->
-      <table class="header-table">
-        <tr>
-          <td class="logo-cell">
-            <svg width="150" height="50" viewBox="0 0 200 65" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- Golden & Blue Modern Logo Monogram -->
-              <path d="M12 12 H38 C48 12 55 18 55 27 C55 35 48 41 38 41 H24 V58 H12 V12Z" fill="#1E3A8A"/>
-              <path d="M24 22 H36 C41 22 44 24 44 27 C44 30 41 32 36 32 H24 V22Z" fill="#FFFFFF"/>
-              <path d="M36 34 L56 58 H41 L25 38 Z" fill="#F59E0B"/>
-              <!-- E Monogram -->
-              <path d="M58 12 H90 V21 H69 V30 H86 V38 H69 V49 H92 V58 H58 V12Z" fill="#1E3A8A"/>
-              <text x="100" y="28" font-family="Arial, sans-serif" font-weight="900" font-size="14" fill="#1E3A8A" letter-spacing="1">RUDHVIN</text>
-              <text x="100" y="44" font-family="Arial, sans-serif" font-weight="700" font-size="10" fill="#64748B" letter-spacing="2">ENTERPRISES</text>
-            </svg>
-          </td>
-          <td class="company-info-cell">
-            <h1 class="company-title">${seller.companyName || 'RUDHVIN ENTERPRISES'}</h1>
-            <p class="company-details">${seller.address || 'D.No.9-6-105/1/3, 2nd Floor, 1st Portion, Mangapuram Colony, Near Kalabharathi, Sivajipalem, LB Colony, Visakhapatnam - 530017.'} Ph: ${seller.phone || '7075708933'}</p>
-            <div class="company-gstin">GSTIN : ${seller.gstin || '37DGBPV1007RIZU'}</div>
-          </td>
-        </tr>
-      </table>
+      ${sampleBanner}
 
-      <div class="divider"></div>
-
-      <!-- Bill To & Meta Section -->
-      <table class="meta-table">
+      <!-- 1. Company Header -->
+      <table class="company-header-table">
         <tr>
-          <td class="bill-to-cell">
-            <div class="bill-to-title">TO,</div>
-            <div class="customer-name">${customer.organization || customer.name || 'CUSTOMER'}</div>
-            <div style="white-space: pre-line;">${customer.billingAddress || ''}</div>
-            ${customer.phone ? `<div><strong>PH :</strong> ${customer.phone}</div>` : ''}
-            ${customer.gstin ? `<div><strong>GSTIN :</strong> ${customer.gstin}</div>` : ''}
-            ${customer.state ? `<div><strong>STATE :</strong> ${customer.state} (${customer.stateCode || ''})</div>` : ''}
-          </td>
-          <td class="invoice-meta-cell">
-            <div class="invoice-meta-box">
-              <div style="margin-bottom: 4px;"><strong>INVOICE NO:</strong> <span style="color:#0284c7; font-weight:800; font-size:13px;">${invoice.invoiceNumber}</span></div>
-              <div style="margin-bottom: 4px;"><strong>Date:</strong> ${invoiceDateStr}</div>
-              ${dueDateStr ? `<div style="margin-bottom: 4px;"><strong>Due Date:</strong> ${dueDateStr}</div>` : ''}
-              ${invoice.paymentTerms ? `<div><strong>Terms:</strong> ${invoice.paymentTerms}</div>` : ''}
-              ${invoice.poNumber ? `<div><strong>P.O. No:</strong> ${invoice.poNumber}</div>` : ''}
+          <td>
+            <div class="company-title">${seller.companyName || 'RUDHVIN ENTERPRISES'}</div>
+            ${invoice.isSample ? '<div class="company-subtitle">SAMPLE TAX INVOICE — NOT FOR PAYMENT</div>' : ''}
+            <div class="company-address">${seller.address || 'D.No.9-6-105/1/3, 2nd Floor, 1st Portion, Mangapuram Colony, Near Kalabharathi, Sivajipalem, LB Colony, Visakhapatnam - 530017.'}</div>
+            <div class="company-contacts">
+              <span>GSTIN: <strong>${seller.gstin || '37DGBPV1007RIZU'}</strong></span>
+              &nbsp;|&nbsp;
+              <span>Ph: <strong>${seller.phone || seller.mobile || '7075708933'}</strong></span>
+              &nbsp;|&nbsp;
+              <span>Email: <strong>${seller.email || 'rudhvinenterprises@gmail.com'}</strong></span>
             </div>
           </td>
         </tr>
       </table>
 
-      <!-- Banner -->
-      <div class="invoice-banner">
-        INVOICE
-      </div>
+      <div class="header-rule"></div>
 
-      <!-- Items Table -->
+      <!-- 2. Bordered, Two-Column Invoice Information Section -->
+      <table class="info-table">
+        <tr>
+          <!-- Left Column -->
+          <td class="info-left-col">
+            <div class="info-field-row">
+              <span class="info-label">Invoice Number:</span>
+              <span class="info-val" style="color: #1E3A8A; font-weight: 800; font-size: 13px;">${invoice.invoiceNumber}</span>
+            </div>
+            ${invoice.gemContractNumber ? `
+              <div class="info-field-row">
+                <span class="info-label">GeM Contract No:</span>
+                <span class="info-val">${invoice.gemContractNumber}</span>
+              </div>
+            ` : ''}
+            ${dueDateStr ? `
+              <div class="info-field-row">
+                <span class="info-label">Due Date:</span>
+                <span class="info-val">${dueDateStr}</span>
+              </div>
+            ` : ''}
+            ${invoice.paymentTerms ? `
+              <div class="info-field-row">
+                <span class="info-label">Payment Terms:</span>
+                <span class="info-val">${invoice.paymentTerms}</span>
+              </div>
+            ` : ''}
+          </td>
+
+          <!-- Right Column -->
+          <td class="info-right-col">
+            <div style="font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 12px; margin-bottom: 2px;">
+              Bill To:
+            </div>
+            <div style="font-weight: 700; color: #1e293b; font-size: 12.5px; text-transform: uppercase;">
+              ${customer.organization || customer.name || 'CUSTOMER'}
+            </div>
+            <div style="font-size: 11px; color: #334155; margin: 2px 0 6px 0; line-height: 1.35;">
+              ${(customer.billingAddress || customer.address || '').replace(/\n/g, '<br>')}
+            </div>
+            <div class="info-field-row">
+              <span class="info-label">Buyer GSTIN:</span>
+              <span class="info-val">${customer.gstin || 'Unregistered'}</span>
+            </div>
+            <div class="info-field-row">
+              <span class="info-label">Invoice Date:</span>
+              <span class="info-val">${invoiceDateStr}</span>
+            </div>
+            <div class="info-field-row">
+              <span class="info-label">Place of Supply:</span>
+              <span class="info-val">${invoice.placeOfSupply || customer.state || '37 - Andhra Pradesh'}</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- 3. Replace Invoice Items Table (6 columns matching reference) -->
       <table class="items-table">
         <thead>
           <tr>
-            <th style="width: 45px;">S.No.</th>
-            <th>Description</th>
-            <th style="width: 85px;">HSN/SAC</th>
-            <th style="width: 75px;">Qty</th>
-            <th style="width: 100px;">Rate</th>
-            <th style="width: 110px;">Amount</th>
+            <th style="width: 45px; text-align: center;">S.No.</th>
+            <th style="text-align: left; padding-left: 10px;">Description of Goods</th>
+            <th style="width: 90px; text-align: center;">HSN</th>
+            <th style="width: 80px; text-align: center;">Qty</th>
+            <th style="width: 125px; text-align: right; padding-right: 8px;">Taxable Value (₹)</th>
+            <th style="width: 125px; text-align: right; padding-right: 8px;">Line Total (₹)</th>
           </tr>
         </thead>
         <tbody>
           ${itemsRows}
           ${emptyRows}
-          <!-- Subtotal -->
+
+          <!-- 4. GST Calculation and Invoice Totals Section directly below items table -->
+          <!-- Row 1: Taxable Value -->
           <tr>
-            <td colspan="5" style="text-align: right; border: 1px solid #111; padding: 6px 8px; font-weight: bold;">Subtotal</td>
-            <td style="text-align: right; border: 1px solid #111; padding: 6px 8px; font-weight: bold;">₹${formatCurrency(invoice.subtotal)}</td>
+            <td colspan="5" style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 700;">
+              Taxable Value
+            </td>
+            <td style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap;">
+              ₹${formatCurrency(taxableValueTotal)}
+            </td>
           </tr>
-          ${invoice.totalDiscount > 0 ? `
-            <tr>
-              <td colspan="5" style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; color: #dc2626;">Discount</td>
-              <td style="text-align: right; border: 1px solid #111; padding: 4px 8px; font-size: 12px; color: #dc2626;">- ₹${formatCurrency(invoice.totalDiscount)}</td>
-            </tr>
-          ` : ''}
-          ${taxRows}
-          <!-- Grand Total -->
-          <tr style="background-color: #f8fafc;">
-            <td colspan="5" style="text-align: right; border: 1.5px solid #111; padding: 8px; font-size: 14px; font-weight: 800; color: #0f172a;">Total / Grand Total</td>
-            <td style="text-align: right; border: 1.5px solid #111; padding: 8px; font-size: 14px; font-weight: 800; color: #0f172a;">₹${formatCurrency(invoice.grandTotal)}</td>
+
+          <!-- Row 2 & 3: CGST/SGST or IGST at applicable rate -->
+          ${gstRows}
+
+          <!-- Row 4: Total GST -->
+          <tr>
+            <td colspan="5" style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 700; background-color: #f1f5f9;">
+              Total GST
+            </td>
+            <td style="text-align: right; border: 1px solid #0f172a; padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; background-color: #f1f5f9;">
+              ₹${formatCurrency(totalGst)}
+            </td>
+          </tr>
+
+          <!-- Row 5: Total Invoice Value (inclusive of GST) -->
+          <tr style="background-color: #e2e8f0;">
+            <td colspan="5" style="text-align: right; border: 1.5px solid #0f172a; padding: 8px 10px; font-size: 13px; font-weight: 900; color: #0f172a;">
+              Total Invoice Value (inclusive of GST)
+            </td>
+            <td style="text-align: right; border: 1.5px solid #0f172a; padding: 8px 10px; font-size: 13px; font-weight: 900; color: #0f172a; white-space: nowrap;">
+              ₹${formatCurrency(invoice.grandTotal)}
+            </td>
           </tr>
         </tbody>
       </table>
 
-      <!-- Amount in words -->
-      <div class="amount-words-section">
-        <span>Amount Chargeable (in words):</span>
-        <span style="font-weight: 800; color: #1e293b; margin-left: 6px;">${amountInWords}</span>
+      <!-- Row 6: Amount in Words -->
+      <div class="amount-words-box">
+        <strong>Amount in Words:</strong>
+        <span style="font-weight: 800; color: #1e3a8a; margin-left: 6px;">${amountInWords}</span>
       </div>
     </div>
 
+    <!-- Bottom Section (Bank Details & Signatory) -->
     <div>
-      <!-- Bottom Section (Bank Details & Signatory) -->
-      <table class="bottom-section">
+      <table class="bottom-table">
         <tr>
-          <td class="bank-details-cell">
+          <td style="width: 58%; vertical-align: bottom;">
             <div class="bank-box">
-              <div class="bank-title">Bank Details:</div>
-              <div><strong>Account number:</strong> ${bank.accountNumber || '143201000000719'}</div>
-              <div><strong>IFSC Code:</strong> ${bank.ifscCode || 'KVBL0001432'}</div>
-              <div><strong>Account holder name:</strong> ${bank.accountHolderName || 'RUDHVIN ENTERPRISES'}</div>
-              <div><strong>Bank Name:</strong> ${bank.bankName || 'Karur Vysya Bank'}</div>
-              ${bank.branch ? `<div><strong>Branch:</strong> ${bank.branch}</div>` : ''}
+              <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; color: #0f172a;">Bank Details:</div>
+              <div>Account number: <strong>${bank.accountNumber || '143201000000719'}</strong></div>
+              <div>IFSC Code: <strong>${bank.ifscCode || 'KVBL0001432'}</strong></div>
+              <div>Account holder name: <strong>${bank.accountHolderName || 'RUDHVIN ENTERPRISES'}</strong></div>
+              <div>Bank Name: <strong>${bank.bankName || 'Karur Vysya Bank'}</strong>${bank.branch ? ` (${bank.branch})` : ''}</div>
             </div>
           </td>
-          <td class="signatory-cell">
-            <div class="signatory-title">Authorized Signatory</div>
-            <div class="signatory-company">${seller.authorizedSignatory || seller.companyName || 'Rudhvin Enterprises'}</div>
-            <div style="font-size: 11px; color: #475569;">Email: ${seller.email || 'rudhvinenterprises@gmail.com'}</div>
-            <div style="font-size: 11px; color: #475569;">Phone: ${seller.mobile || seller.phone || '+91 9652496933'}</div>
+          <td style="width: 42%; vertical-align: bottom;">
+            <div class="signatory-box">
+              <div style="font-weight: 700; color: #64748b; margin-bottom: 35px;">For RUDHVIN ENTERPRISES</div>
+              <div style="font-weight: 800; color: #0f172a; font-size: 12px;">Authorized Signatory</div>
+              <div style="font-size: 10px; color: #64748b;">${seller.phone || seller.mobile || '7075708933'} | ${seller.email || 'rudhvinenterprises@gmail.com'}</div>
+            </div>
           </td>
         </tr>
       </table>

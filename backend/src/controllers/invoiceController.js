@@ -8,6 +8,74 @@ import { getInvoiceHtml } from '../templates/invoiceTemplate.js';
 import { logAudit } from '../services/auditService.js';
 import { numberToWords } from '../utils/numberToWords.js';
 
+export function normalizeInvoice(inv) {
+  if (!inv) return inv;
+  const rawItems = inv.lineItems || inv.items || [];
+  const isInterState = Boolean(inv.taxBreakdown?.isInterState);
+
+  const items = rawItems.map((item, idx) => {
+    const qty = Number(item.quantity) || 0;
+    const unitRate = Number(item.unitRate !== undefined ? item.unitRate : (item.rate || 0));
+    const lineGross = qty * unitRate;
+    const discAmount = Number(item.discountAmount) || ((lineGross * (Number(item.discountPercent) || 0)) / 100);
+    const taxableValue = Number(item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount !== undefined ? item.taxableAmount : (lineGross - discAmount)));
+    const gstRate = Number(item.gstRate !== undefined ? item.gstRate : (item.taxRate || 0));
+    const gstAmount = Number(item.gstAmount !== undefined ? item.gstAmount : (item.taxAmount || (taxableValue * gstRate / 100)));
+    const lineTotal = Number(item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || (taxableValue + gstAmount)));
+
+    const cgstRate = isInterState ? 0 : (item.cgstRate !== undefined ? item.cgstRate : gstRate / 2);
+    const sgstRate = isInterState ? 0 : (item.sgstRate !== undefined ? item.sgstRate : gstRate / 2);
+    const igstRate = isInterState ? (item.igstRate !== undefined ? item.igstRate : gstRate) : 0;
+    const cgstAmount = isInterState ? 0 : (item.cgstAmount !== undefined ? item.cgstAmount : gstAmount / 2);
+    const sgstAmount = isInterState ? 0 : (item.sgstAmount !== undefined ? item.sgstAmount : gstAmount / 2);
+    const igstAmount = isInterState ? (item.igstAmount !== undefined ? item.igstAmount : gstAmount) : 0;
+
+    return {
+      ...item,
+      serialNumber: item.serialNumber || idx + 1,
+      unitRate,
+      rate: unitRate,
+      taxableValue,
+      taxableAmount: taxableValue,
+      gstRate,
+      taxRate: gstRate,
+      cgstRate,
+      cgstAmount,
+      sgstRate,
+      sgstAmount,
+      igstRate,
+      igstAmount,
+      gstAmount,
+      taxAmount: gstAmount,
+      lineTotal,
+      totalAmount: lineTotal
+    };
+  });
+
+  const taxableValue = Number(inv.taxableValue !== undefined ? inv.taxableValue : (inv.taxableAmount !== undefined ? inv.taxableAmount : (inv.subtotal || 0)));
+  const totalGst = Number(inv.totalGst !== undefined ? inv.totalGst : (inv.taxBreakdown?.totalTax || 0));
+  const cgstAmount = Number(inv.cgstAmount !== undefined ? inv.cgstAmount : (inv.taxBreakdown?.cgstAmount || (isInterState ? 0 : totalGst / 2)));
+  const sgstAmount = Number(inv.sgstAmount !== undefined ? inv.sgstAmount : (inv.taxBreakdown?.sgstAmount || (isInterState ? 0 : totalGst / 2)));
+  const igstAmount = Number(inv.igstAmount !== undefined ? inv.igstAmount : (inv.taxBreakdown?.igstAmount || (isInterState ? totalGst : 0)));
+
+  return {
+    ...inv,
+    items,
+    lineItems: items,
+    taxableValue,
+    taxableAmount: taxableValue,
+    totalGst,
+    cgstAmount,
+    sgstAmount,
+    igstAmount,
+    gemContractNumber: inv.gemContractNumber || '',
+    placeOfSupply: inv.placeOfSupply || inv.customerSnapshot?.state || '',
+    isSample: Boolean(inv.isSample),
+    invoiceStatus: inv.status || 'draft',
+    amountInWords: inv.amountInWords || numberToWords(inv.grandTotal)
+  };
+}
+
 export const getInvoices = async (req, res, next) => {
   try {
     const {
@@ -54,25 +122,27 @@ export const getInvoices = async (req, res, next) => {
       const searchRegex = new RegExp(search.trim(), 'i');
       query.$or = [
         { invoiceNumber: searchRegex },
+        { gemContractNumber: searchRegex },
         { 'customerSnapshot.name': searchRegex },
         { 'customerSnapshot.organization': searchRegex },
         { 'customerSnapshot.gstin': searchRegex }
       ];
     }
 
-    // CSV export mode
+    // CSV export mode matching requested table columns
     if (exportCsv === 'true') {
       const allInvoices = await Invoice.find(query)
         .populate('customer', 'name organization phone email')
         .sort({ invoiceDate: -1 })
         .lean();
 
-      let csv = 'Invoice No,Date,Customer,Subtotal,Tax,Grand Total,Total in Words,Amount Paid,Balance Due,Status,Payment Status\n';
-      allInvoices.forEach(inv => {
-        const custName = `"${(inv.customerSnapshot?.name || inv.customer?.name || '').replace(/"/g, '""')}"`;
+      let csv = 'Invoice No,Invoice Date,Customer,Taxable Value,Total GST,Invoice Total,Amount Paid,Pending Amount,Invoice Status,Payment Status,Amount in Words\n';
+      allInvoices.forEach(rawInv => {
+        const inv = normalizeInvoice(rawInv);
+        const custName = `"${(inv.customerSnapshot?.organization || inv.customerSnapshot?.name || inv.customer?.name || '').replace(/"/g, '""')}"`;
         const wordsStr = `"${(inv.amountInWords || numberToWords(inv.grandTotal) || '').replace(/"/g, '""')}"`;
         const dateStr = inv.invoiceDate ? new Date(inv.invoiceDate).toISOString().split('T')[0] : '';
-        csv += `${inv.invoiceNumber},${dateStr},${custName},${inv.subtotal},${inv.taxBreakdown?.totalTax || 0},${inv.grandTotal},${wordsStr},${inv.amountPaid},${inv.balanceDue},${inv.status},${inv.paymentStatus}\n`;
+        csv += `${inv.invoiceNumber},${dateStr},${custName},${inv.taxableValue.toFixed(2)},${inv.totalGst.toFixed(2)},${inv.grandTotal.toFixed(2)},${inv.amountPaid.toFixed(2)},${inv.balanceDue.toFixed(2)},${inv.status},${inv.paymentStatus},${wordsStr}\n`;
       });
 
       res.setHeader('Content-Type', 'text/csv');
@@ -87,7 +157,7 @@ export const getInvoices = async (req, res, next) => {
     const sortOption = {};
     sortOption[sortBy] = order === 'asc' ? 1 : -1;
 
-    const [total, invoices] = await Promise.all([
+    const [total, rawInvoices] = await Promise.all([
       Invoice.countDocuments(query),
       Invoice.find(query)
         .populate('customer', 'name organization phone email')
@@ -97,15 +167,14 @@ export const getInvoices = async (req, res, next) => {
         .lean()
     ]);
 
+    const invoices = rawInvoices.map(normalizeInvoice);
+
     res.status(200).json({
       success: true,
       total,
       page: pageNum,
-      totalPages: Math.ceil(total / limitNum),
-      data: invoices.map(inv => ({
-        ...inv,
-        amountInWords: inv.amountInWords || numberToWords(inv.grandTotal)
-      }))
+      totalPages: Math.ceil(total / limitNum) || 1,
+      data: invoices
     });
   } catch (error) {
     next(error);
@@ -114,13 +183,15 @@ export const getInvoices = async (req, res, next) => {
 
 export const getInvoiceById = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false })
+    const rawInvoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false })
       .populate('customer', 'name organization phone email billingAddress')
       .lean();
 
-    if (!invoice) {
+    if (!rawInvoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
+
+    const invoice = normalizeInvoice(rawInvoice);
 
     const payments = await Payment.find({ invoice: invoice._id, status: 'completed' })
       .sort({ paymentDate: -1 })
@@ -130,7 +201,6 @@ export const getInvoiceById = async (req, res, next) => {
       success: true,
       data: {
         ...invoice,
-        amountInWords: invoice.amountInWords || numberToWords(invoice.grandTotal),
         payments
       }
     });
@@ -157,6 +227,10 @@ export const createInvoice = async (req, res, next) => {
       customerId,
       invoiceDate,
       dueDate,
+      gemContractNumber = '',
+      placeOfSupply = '',
+      isSample = false,
+      taxTreatment = 'auto',
       paymentTerms,
       notes,
       poNumber,
@@ -176,12 +250,20 @@ export const createInvoice = async (req, res, next) => {
       company = await Company.create({});
     }
 
-    // Calculate authoritative totals
+    const sellerStateCode = company.stateCode || '37';
+    const customerStateCode = customer.stateCode || '37';
+    const pos = placeOfSupply.trim() || `${customer.state || 'Andhra Pradesh'} (${customerStateCode})`;
+
+    // Server-side authoritative totals calculation (frontend cannot override)
     const calculations = calculateInvoiceTotals(
       items,
-      company.stateCode || '37',
-      customer.stateCode || '37',
-      discount
+      sellerStateCode,
+      customerStateCode,
+      discount,
+      {
+        placeOfSupply: pos,
+        taxTreatment
+      }
     );
 
     // Generate atomic next invoice number
@@ -193,13 +275,17 @@ export const createInvoice = async (req, res, next) => {
     const isDraft = status === 'draft';
     const invoiceStatus = isDraft ? 'draft' : 'issued';
 
-    const invoice = await Invoice.create({
+    const invoiceData = {
       invoiceNumber,
       invoiceDate: invDate,
       dueDate: invDueDate,
+      gemContractNumber: gemContractNumber.trim(),
+      placeOfSupply: pos,
+      isSample: Boolean(isSample),
+      taxTreatment,
       customer: customer._id,
       sellerSnapshot: {
-        companyName: company.companyName,
+        companyName: company.companyName || 'RUDHVIN ENTERPRISES',
         tagline: company.tagline,
         address: company.address,
         phone: company.phone,
@@ -225,14 +311,21 @@ export const createInvoice = async (req, res, next) => {
         contactPerson: customer.contactPerson
       },
       lineItems: calculations.items,
+      items: calculations.items,
       subtotal: calculations.subtotal,
       totalDiscount: calculations.totalDiscount,
-      taxableAmount: calculations.taxableAmount,
+      taxableValue: calculations.taxableValue,
+      taxableAmount: calculations.taxableValue,
+      cgstAmount: calculations.cgstAmount,
+      sgstAmount: calculations.sgstAmount,
+      igstAmount: calculations.igstAmount,
+      totalGst: calculations.totalGst,
       taxBreakdown: calculations.taxBreakdown,
       grandTotal: calculations.grandTotal,
       amountPaid: 0,
       balanceDue: calculations.grandTotal,
       status: invoiceStatus,
+      invoiceStatus: invoiceStatus,
       paymentStatus: 'unpaid',
       paymentTerms: paymentTerms || company.defaultPaymentTerms || 'Due on Receipt',
       notes: notes || '',
@@ -241,7 +334,9 @@ export const createInvoice = async (req, res, next) => {
       amountInWords: calculations.amountInWords,
       issuedAt: isDraft ? null : new Date(),
       createdBy: req.user?._id
-    });
+    };
+
+    const invoice = await Invoice.create(invoiceData);
 
     await logAudit({
       user: req.user,
@@ -255,7 +350,7 @@ export const createInvoice = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: `Invoice ${invoiceNumber} ${isDraft ? 'saved as draft' : 'issued successfully'}`,
-      data: invoice
+      data: normalizeInvoice(invoice.toObject ? invoice.toObject() : invoice)
     });
   } catch (error) {
     next(error);
@@ -273,31 +368,55 @@ export const updateInvoice = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Cannot edit a cancelled invoice' });
     }
 
-    const previousValues = invoice.toObject();
+    // Role check: Only admin can amend/correct issued invoices
+    if (invoice.status !== 'draft' && req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can amend or correct issued invoices'
+      });
+    }
+
+    const previousValues = invoice.toObject ? invoice.toObject() : { ...invoice };
 
     let company = await Company.findOne().lean();
     if (!company) company = await Company.create({});
 
     const sellerStateCode = invoice.sellerSnapshot?.stateCode || company.stateCode || '37';
     const customerStateCode = invoice.customerSnapshot?.stateCode || '37';
+    const pos = req.body.placeOfSupply !== undefined ? req.body.placeOfSupply : invoice.placeOfSupply;
+    const taxTreatment = req.body.taxTreatment || invoice.taxTreatment || 'auto';
 
     if (req.body.items) {
       const calculations = calculateInvoiceTotals(
         req.body.items,
         sellerStateCode,
         customerStateCode,
-        req.body.discount !== undefined ? req.body.discount : invoice.totalDiscount
+        req.body.discount !== undefined ? req.body.discount : invoice.totalDiscount,
+        {
+          placeOfSupply: pos,
+          taxTreatment
+        }
       );
       invoice.lineItems = calculations.items;
+      invoice.items = calculations.items;
       invoice.subtotal = calculations.subtotal;
       invoice.totalDiscount = calculations.totalDiscount;
-      invoice.taxableAmount = calculations.taxableAmount;
+      invoice.taxableValue = calculations.taxableValue;
+      invoice.taxableAmount = calculations.taxableValue;
+      invoice.cgstAmount = calculations.cgstAmount;
+      invoice.sgstAmount = calculations.sgstAmount;
+      invoice.igstAmount = calculations.igstAmount;
+      invoice.totalGst = calculations.totalGst;
       invoice.taxBreakdown = calculations.taxBreakdown;
       invoice.grandTotal = calculations.grandTotal;
       invoice.balanceDue = Math.max(0, calculations.grandTotal - invoice.amountPaid);
       invoice.amountInWords = calculations.amountInWords;
     }
 
+    if (req.body.gemContractNumber !== undefined) invoice.gemContractNumber = req.body.gemContractNumber.trim();
+    if (req.body.placeOfSupply !== undefined) invoice.placeOfSupply = req.body.placeOfSupply.trim();
+    if (req.body.isSample !== undefined) invoice.isSample = Boolean(req.body.isSample);
+    if (req.body.taxTreatment !== undefined) invoice.taxTreatment = req.body.taxTreatment;
     if (req.body.invoiceDate) invoice.invoiceDate = new Date(req.body.invoiceDate);
     if (req.body.dueDate) invoice.dueDate = new Date(req.body.dueDate);
     if (req.body.paymentTerms) invoice.paymentTerms = req.body.paymentTerms;
@@ -310,18 +429,18 @@ export const updateInvoice = async (req, res, next) => {
 
     await logAudit({
       user: req.user,
-      action: 'INVOICE_UPDATED',
+      action: invoice.status === 'draft' ? 'INVOICE_UPDATED' : 'INVOICE_AMENDED',
       entityType: 'Invoice',
       entityId: invoice._id,
       previousValues,
-      newValues: invoice.toObject(),
-      notes: `Updated invoice ${invoice.invoiceNumber}`
+      newValues: invoice.toObject ? invoice.toObject() : invoice,
+      notes: `${invoice.status === 'draft' ? 'Updated draft' : 'Amended issued invoice'} ${invoice.invoiceNumber}`
     });
 
     res.status(200).json({
       success: true,
       message: 'Invoice updated successfully',
-      data: invoice
+      data: normalizeInvoice(invoice.toObject ? invoice.toObject() : invoice)
     });
   } catch (error) {
     next(error);
@@ -339,7 +458,13 @@ export const issueInvoice = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Only draft invoices can be issued' });
     }
 
+    // Role check: Only admin or authorized user
+    if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
     invoice.status = invoice.amountPaid > 0 ? (invoice.balanceDue === 0 ? 'paid' : 'partially_paid') : 'issued';
+    invoice.invoiceStatus = invoice.status;
     invoice.issuedAt = new Date();
     await invoice.save();
 
@@ -354,7 +479,7 @@ export const issueInvoice = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: `Invoice ${invoice.invoiceNumber} issued successfully`,
-      data: invoice
+      data: normalizeInvoice(invoice.toObject ? invoice.toObject() : invoice)
     });
   } catch (error) {
     next(error);
@@ -363,6 +488,14 @@ export const issueInvoice = async (req, res, next) => {
 
 export const cancelInvoice = async (req, res, next) => {
   try {
+    // Role check: Only admin can cancel invoices
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can cancel invoices'
+      });
+    }
+
     const { reason = 'Cancelled by authorized user' } = req.body;
     const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false });
 
@@ -376,6 +509,7 @@ export const cancelInvoice = async (req, res, next) => {
 
     const previousStatus = invoice.status;
     invoice.status = 'cancelled';
+    invoice.invoiceStatus = 'cancelled';
     invoice.cancelledAt = new Date();
     invoice.cancellationReason = reason;
     await invoice.save();
@@ -393,7 +527,7 @@ export const cancelInvoice = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: `Invoice ${invoice.invoiceNumber} has been cancelled`,
-      data: invoice
+      data: normalizeInvoice(invoice.toObject ? invoice.toObject() : invoice)
     });
   } catch (error) {
     next(error);
@@ -402,11 +536,12 @@ export const cancelInvoice = async (req, res, next) => {
 
 export const getInvoiceHtmlPreview = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false }).lean();
-    if (!invoice) {
+    const rawInvoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false }).lean();
+    if (!rawInvoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
+    const invoice = normalizeInvoice(rawInvoice);
     const html = getInvoiceHtml(invoice);
     res.setHeader('Content-Type', 'text/html');
     res.status(200).send(html);
@@ -417,11 +552,12 @@ export const getInvoiceHtmlPreview = async (req, res, next) => {
 
 export const getInvoicePdf = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false }).lean();
-    if (!invoice) {
+    const rawInvoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false }).lean();
+    if (!rawInvoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
+    const invoice = normalizeInvoice(rawInvoice);
     const pdfBuffer = await generateInvoicePdfBuffer(invoice);
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -436,6 +572,10 @@ export const getInvoicePdf = async (req, res, next) => {
 
 export const deleteInvoice = async (req, res, next) => {
   try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only administrators can delete invoices' });
+    }
+
     const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false });
     if (!invoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
