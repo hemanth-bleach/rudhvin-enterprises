@@ -71,9 +71,9 @@ export function getInvoiceHtml(invoice) {
     .join('');
 
   // GST Calculation rows
-  const taxableValueTotal = invoice.isTaxInclusive
-    ? (invoice.grandTotal !== undefined ? invoice.grandTotal : (invoice.totalAmount || invoice.taxableValue || 0))
-    : (invoice.taxableValue !== undefined ? invoice.taxableValue : (invoice.taxableAmount || invoice.subtotal || 0));
+  const taxableValueTotal = invoice.taxableValue !== undefined
+    ? invoice.taxableValue
+    : (invoice.taxableAmount !== undefined ? invoice.taxableAmount : (invoice.subtotal || 0));
   const totalGst = invoice.totalGst !== undefined ? invoice.totalGst : (invoice.taxBreakdown?.totalTax || 0);
   const primaryTaxRate = invoice.taxBreakdown?.taxRate || 0;
 

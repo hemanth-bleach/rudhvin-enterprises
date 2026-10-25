@@ -23,18 +23,18 @@ const t1 = calculateInvoiceTotals(
   { isInterState: false, isTaxInclusive: true }
 );
 
-console.log('Test 1 (Intra-state Same Value):');
-console.log('  Item Taxable Value:', t1.items[0].taxableValue, '(Expected: 1000.00)');
+console.log('Test 1 (Intra-state Tax-Inclusive Invoicing):');
+console.log('  Item Taxable Value:', t1.items[0].taxableValue, '(Expected: 847.46)');
 console.log('  Item Line Total:', t1.items[0].lineTotal, '(Expected: 1000.00)');
-console.log('  Invoice Taxable Value:', t1.taxableValue, '(Expected: 1000.00)');
+console.log('  Invoice Taxable Value:', t1.taxableValue, '(Expected: 847.46)');
 console.log('  CGST (9%):', t1.cgstAmount, '(Expected: 76.27)');
 console.log('  SGST (9%):', t1.sgstAmount, '(Expected: 76.27)');
 console.log('  Total GST:', t1.totalGst, '(Expected: 152.54)');
 console.log('  Total Invoice Value (inclusive of GST):', t1.grandTotal, '(Expected: 1000.00)');
 
-assert.strictEqual(t1.items[0].taxableValue, 1000, 'Item taxable value must be 1000');
+assert.strictEqual(t1.items[0].taxableValue, 847.46, 'Item taxable value must be 847.46');
 assert.strictEqual(t1.items[0].lineTotal, 1000, 'Item line total must be 1000');
-assert.strictEqual(t1.taxableValue, 1000, 'Invoice taxable value must be 1000');
+assert.strictEqual(t1.taxableValue, 847.46, 'Invoice taxable value must be 847.46');
 assert.strictEqual(t1.grandTotal, 1000, 'Invoice grand total must be 1000');
 assert.strictEqual(t1.cgstAmount, 76.27, 'CGST must be 76.27');
 assert.strictEqual(t1.sgstAmount, 76.27, 'SGST must be 76.27');

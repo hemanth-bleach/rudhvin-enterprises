@@ -314,8 +314,8 @@ export default function CreateInvoice() {
           totalSgst = round(totalSgst + sgst);
         }
 
-        // Both Taxable Value and Line Total display the same value (net contract amount, e.g. ₹1,000.00)
-        taxableValue = netInclusive;
+        // Tax-Inclusive: Extract GST from net inclusive price using division by (1 + gstRate / 100)
+        taxableValue = baseTaxable;
         lineTotal = netInclusive;
       } else {
         // Tax-Exclusive: GST is calculated on Taxable Value and added to reach Line Total.
@@ -359,12 +359,9 @@ export default function CreateInvoice() {
       };
     });
 
-    const isInvoiceTaxInclusive = Boolean(isTaxInclusive || calculatedItems.some(i => i.isTaxInclusive));
     const totalGst = round(isInterState ? totalIgst : totalCgst + totalSgst);
     const disc = Number(discountAmount) || 0;
-    const grandTotal = isInvoiceTaxInclusive
-      ? round(totalTaxableValue - disc)
-      : round(totalTaxableValue + totalGst - disc);
+    const grandTotal = round(totalTaxableValue + totalGst - disc);
     const primaryTaxRate = calculatedItems.reduce((max, i) => Math.max(max, i.taxRate || 0), 0);
 
     return {
@@ -871,7 +868,7 @@ export default function CreateInvoice() {
                   </div>
                   <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
                     {isTaxInclusive
-                      ? 'Rates entered include GST. Taxable Value and Line Total both display the contract price (e.g. ₹1,000.00), with CGST & SGST (₹76.27 + ₹76.27 = ₹152.54) included inside.'
+                      ? 'Rates entered include GST. Taxable Value is extracted by dividing by (1 + GST rate) (e.g. ₹5,160.00 Total → ₹4,372.88 Taxable + ₹787.12 GST).'
                       : 'Rates entered exclude GST. CGST and SGST are calculated on Taxable Value and added to reach Line Total.'}
                   </p>
                 </div>
@@ -919,7 +916,7 @@ export default function CreateInvoice() {
                     const gstRate = item.taxRate || 0;
                     const baseTaxable = gstRate > 0 ? round(netIncl / (1 + gstRate / 100)) : netIncl;
                     gst = round(netIncl - baseTaxable);
-                    taxable = netIncl; // Same value: contract line value
+                    taxable = baseTaxable;
                     total = netIncl;
                   } else {
                     lineGross = round((item.quantity || 0) * (item.rate || 0));

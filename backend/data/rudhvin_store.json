@@ -328,8 +328,8 @@
           "inclusiveRate": 5160,
           "discountPercent": 0,
           "discountAmount": 0,
-          "taxableValue": 5160,
-          "taxableAmount": 5160,
+          "taxableValue": 4372.88,
+          "taxableAmount": 4372.88,
           "gstRate": 18,
           "taxRate": 18,
           "cgstRate": 0,
@@ -357,8 +357,8 @@
           "inclusiveRate": 5160,
           "discountPercent": 0,
           "discountAmount": 0,
-          "taxableValue": 5160,
-          "taxableAmount": 5160,
+          "taxableValue": 4372.88,
+          "taxableAmount": 4372.88,
           "gstRate": 18,
           "taxRate": 18,
           "cgstRate": 0,
@@ -375,8 +375,8 @@
       ],
       "subtotal": 5160,
       "totalDiscount": 0,
-      "taxableValue": 5160,
-      "taxableAmount": 5160,
+      "taxableValue": 4372.88,
+      "taxableAmount": 4372.88,
       "cgstAmount": 0,
       "sgstAmount": 0,
       "igstAmount": 787.12,
@@ -395,7 +395,7 @@
         "rateBreakdown": [
           {
             "rate": 18,
-            "taxableValue": 5160,
+            "taxableValue": 4372.88,
             "cgstRate": 0,
             "cgstAmount": 0,
             "sgstRate": 0,
@@ -8607,6 +8607,20 @@
       "timestamp": "2026-10-25T15:58:17.305Z",
       "createdAt": "2026-10-25T15:58:37.538Z",
       "updatedAt": "2026-10-25T15:58:37.538Z"
+    },
+    {
+      "_id": "139301edb320f71b80e54e29",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-25T16:46:35.296Z",
+      "createdAt": "2026-10-25T16:47:05.336Z",
+      "updatedAt": "2026-10-25T16:47:05.336Z"
     }
   ]
 }

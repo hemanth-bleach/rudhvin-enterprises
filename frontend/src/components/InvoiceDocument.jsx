@@ -23,9 +23,9 @@ export default function InvoiceDocument({ invoice, className = '' }) {
 
   const isInterState = Boolean(invoice.taxBreakdown?.isInterState);
   const isTaxInclusive = Boolean(invoice.isTaxInclusive || items.some(i => i.isTaxInclusive));
-  const taxableValueTotal = isTaxInclusive
-    ? (invoice.grandTotal !== undefined ? invoice.grandTotal : (invoice.totalAmount || invoice.taxableValue || 0))
-    : (invoice.taxableValue !== undefined ? invoice.taxableValue : (invoice.taxableAmount || invoice.subtotal || 0));
+  const taxableValueTotal = invoice.taxableValue !== undefined
+    ? invoice.taxableValue
+    : (invoice.taxableAmount !== undefined ? invoice.taxableAmount : (invoice.subtotal || 0));
   const totalGst = invoice.totalGst !== undefined ? invoice.totalGst : (invoice.taxBreakdown?.totalTax || 0);
   const primaryTaxRate = invoice.taxBreakdown?.taxRate || 0;
   const amountInWords = invoice.amountInWords || numberToWords(invoice.grandTotal);

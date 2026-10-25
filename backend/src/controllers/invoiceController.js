@@ -22,10 +22,22 @@ export function normalizeInvoice(inv) {
     const discAmount = Number(item.discountAmount) || ((lineGross * (Number(item.discountPercent) || 0)) / 100);
     const gstRate = Number(item.gstRate !== undefined ? item.gstRate : (item.taxRate || 0));
     const lineTotal = Number(item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || (lineGross - discAmount)));
-    const taxableValue = isTaxInclusive
-      ? lineTotal
-      : Number(item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount !== undefined ? item.taxableAmount : (lineGross - discAmount)));
-    const gstAmount = Number(item.gstAmount !== undefined ? item.gstAmount : (item.taxAmount || (lineTotal - (gstRate > 0 ? (lineTotal / (1 + gstRate / 100)) : lineTotal))));
+    const taxableValue = Number(
+      item.taxableValue !== undefined
+        ? item.taxableValue
+        : (item.taxableAmount !== undefined
+          ? item.taxableAmount
+          : (isTaxInclusive && gstRate > 0
+            ? Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100
+            : lineGross - discAmount))
+    );
+    const gstAmount = Number(
+      item.gstAmount !== undefined
+        ? item.gstAmount
+        : (item.taxAmount !== undefined
+          ? item.taxAmount
+          : Math.round((lineTotal - taxableValue) * 100) / 100)
+    );
 
     const cgstRate = isInterState ? 0 : (item.cgstRate !== undefined ? item.cgstRate : gstRate / 2);
     const sgstRate = isInterState ? 0 : (item.sgstRate !== undefined ? item.sgstRate : gstRate / 2);
@@ -57,10 +69,14 @@ export function normalizeInvoice(inv) {
     };
   });
 
-  const taxableValue = isTaxInclusive
-    ? Number(inv.grandTotal || inv.totalAmount || 0)
-    : Number(inv.taxableValue !== undefined ? inv.taxableValue : (inv.taxableAmount !== undefined ? inv.taxableAmount : (inv.subtotal || 0)));
-  const totalGst = Number(inv.totalGst !== undefined ? inv.totalGst : (inv.taxBreakdown?.totalTax || 0));
+  const taxableValue = Number(
+    inv.taxableValue !== undefined
+      ? inv.taxableValue
+      : (inv.taxableAmount !== undefined
+        ? inv.taxableAmount
+        : items.reduce((sum, it) => sum + (it.taxableValue || 0), 0))
+  );
+  const totalGst = Number(inv.totalGst !== undefined ? inv.totalGst : (inv.taxBreakdown?.totalTax || (inv.grandTotal ? Math.round((inv.grandTotal - taxableValue) * 100) / 100 : 0)));
   const cgstAmount = Number(inv.cgstAmount !== undefined ? inv.cgstAmount : (inv.taxBreakdown?.cgstAmount || (isInterState ? 0 : totalGst / 2)));
   const sgstAmount = Number(inv.sgstAmount !== undefined ? inv.sgstAmount : (inv.taxBreakdown?.sgstAmount || (isInterState ? 0 : totalGst / 2)));
   const igstAmount = Number(inv.igstAmount !== undefined ? inv.igstAmount : (inv.taxBreakdown?.igstAmount || (isInterState ? totalGst : 0)));
