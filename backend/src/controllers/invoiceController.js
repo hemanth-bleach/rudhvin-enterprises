@@ -238,7 +238,7 @@ export const createInvoice = async (req, res, next) => {
       gemContractNumber = '',
       placeOfSupply = '',
       isSample = false,
-      isTaxInclusive = false,
+      isTaxInclusive = true,
       taxTreatment = 'auto',
       paymentTerms,
       notes,

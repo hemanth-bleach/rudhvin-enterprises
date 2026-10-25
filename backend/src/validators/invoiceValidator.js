@@ -10,6 +10,7 @@ export const lineItemSchema = z.object({
   rate: z.number().min(0, 'Rate must be non-negative').optional(),
   discountPercent: z.number().min(0).max(100).default(0).optional(),
   discountAmount: z.number().min(0).default(0).optional(),
+  isTaxInclusive: z.boolean().optional().default(true),
   gstRate: z.number().refine(val => [0, 5, 12, 18, 28].includes(val), {
     message: 'GST rate must be 0, 5, 12, 18, or 28%'
   }).default(0).optional(),
@@ -28,6 +29,7 @@ export const createInvoiceSchema = z.object({
   gemContractNumber: z.string().optional(),
   placeOfSupply: z.string().optional(),
   isSample: z.boolean().optional().default(false),
+  isTaxInclusive: z.boolean().optional().default(true),
   taxTreatment: z.enum(['auto', 'intra_state', 'inter_state']).optional().default('auto'),
   paymentTerms: z.string().default('Due on Receipt'),
   notes: z.string().optional(),
@@ -46,6 +48,7 @@ export const updateInvoiceSchema = z.object({
   gemContractNumber: z.string().optional(),
   placeOfSupply: z.string().optional(),
   isSample: z.boolean().optional(),
+  isTaxInclusive: z.boolean().optional().default(true),
   taxTreatment: z.enum(['auto', 'intra_state', 'inter_state']).optional(),
   paymentTerms: z.string().optional(),
   notes: z.string().optional(),
