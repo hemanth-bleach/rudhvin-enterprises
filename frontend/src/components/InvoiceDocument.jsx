@@ -152,16 +152,14 @@ export default function InvoiceDocument({ invoice, className = '' }) {
                   <th className="py-2 px-3 text-left border-r border-[#052c6d] w-[41%]">Description of Goods</th>
                   <th className="py-2 px-1 text-center border-r border-[#052c6d] w-[11%]">HSN</th>
                   <th className="py-2 px-1 text-center border-r border-[#052c6d] w-[11%]">Qty</th>
-                  <th className="py-2 px-3 text-right border-r border-[#052c6d] w-[15%]">Taxable Value (₹)</th>
+                  <th className="py-2 px-3 text-right border-r border-[#052c6d] w-[15%]">Rate of an Item (₹)</th>
                   <th className="py-2 px-3 text-right w-[15%]">Line Total (₹)</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => {
-                  const taxableVal = isTaxInclusive
-                    ? (item.lineTotal !== undefined ? item.lineTotal : (item.taxableValue !== undefined ? item.taxableValue : (item.quantity * (item.unitRate || item.rate || 0))))
-                    : (item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount || (item.quantity * (item.unitRate || item.rate || 0))));
-                  const lineTot = item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || taxableVal);
+                  const itemRate = Number(item.unitRate !== undefined ? item.unitRate : (item.rate || 0));
+                  const lineTot = item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || (itemRate * (Number(item.quantity) || 1)));
                   const qtyStr = `${item.quantity} ${item.unit || 'piece'}`;
 
                   return (
@@ -179,7 +177,7 @@ export default function InvoiceDocument({ invoice, className = '' }) {
                         {qtyStr}
                       </td>
                       <td className="py-2 px-3 text-right border-r border-[#052c6d] font-medium whitespace-nowrap">
-                        ₹{formatCurrency(taxableVal)}
+                        ₹{formatCurrency(itemRate)}
                       </td>
                       <td className="py-2 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
                         ₹{formatCurrency(lineTot)}

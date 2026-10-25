@@ -55,5 +55,6 @@ const dummyInvoice = {
 };
 
 const html = getInvoiceHtml(dummyInvoice);
+assert(html.includes('Rate of an Item (₹)'), 'HTML must include "Rate of an Item (₹)" in table header');
 assert(html.includes('₹1,000.00'), 'HTML must include ₹1,000.00');
-console.log('\n✅ All assertions passed! Taxable Value and Total Invoice Value are identically ₹1,000.00');
+console.log('\n✅ All assertions passed! "Rate of an Item (₹)" header and values verified');

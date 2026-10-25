@@ -35,10 +35,8 @@ export function getInvoiceHtml(invoice) {
   const itemsRows = items
     .map(
       (item, idx) => {
-        const taxableVal = invoice.isTaxInclusive
-          ? (item.lineTotal !== undefined ? item.lineTotal : (item.taxableValue !== undefined ? item.taxableValue : (item.quantity * (item.unitRate || item.rate || 0))))
-          : (item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount || (item.quantity * (item.unitRate || item.rate || 0))));
-        const lineTot = item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || taxableVal);
+        const itemRate = Number(item.unitRate !== undefined ? item.unitRate : (item.rate || 0));
+        const lineTot = item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || (itemRate * (Number(item.quantity) || 1)));
         const qtyStr = `${item.quantity} ${item.unit || 'piece'}`;
 
         return `
@@ -47,7 +45,7 @@ export function getInvoiceHtml(invoice) {
           <td style="width: 41%; border: 1px solid #052c6d; padding: 7px 10px; font-size: 11.5px; font-weight: 500; word-break: break-word;">${item.description || ''}</td>
           <td style="width: 11%; text-align: center; border: 1px solid #052c6d; padding: 7px 4px; font-size: 11.5px;">${item.hsnSac || item.hsn || '-'}</td>
           <td style="width: 11%; text-align: center; border: 1px solid #052c6d; padding: 7px 4px; font-size: 11.5px;">${qtyStr}</td>
-          <td style="width: 15%; text-align: right; border: 1px solid #052c6d; padding: 7px 10px; font-size: 11.5px; white-space: nowrap;">₹${formatCurrency(taxableVal)}</td>
+          <td style="width: 15%; text-align: right; border: 1px solid #052c6d; padding: 7px 10px; font-size: 11.5px; white-space: nowrap;">₹${formatCurrency(itemRate)}</td>
           <td style="width: 15%; text-align: right; border: 1px solid #052c6d; padding: 7px 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">₹${formatCurrency(lineTot)}</td>
         </tr>
       `;
@@ -146,7 +144,7 @@ export function getInvoiceHtml(invoice) {
       print-color-adjust: exact;
     }
     body {
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: 'Segoe UI', 'Nirmala UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
       margin: 0;
       padding: 0;
       color: #0f172a;
@@ -297,7 +295,7 @@ export function getInvoiceHtml(invoice) {
             <th style="width: 41%; text-align: left; border: 1px solid #052c6d; padding: 8px 10px; font-size: 11.5px; font-weight: 700;">Description of Goods</th>
             <th style="width: 11%; text-align: center; border: 1px solid #052c6d; padding: 8px 4px; font-size: 11.5px; font-weight: 700;">HSN</th>
             <th style="width: 11%; text-align: center; border: 1px solid #052c6d; padding: 8px 4px; font-size: 11.5px; font-weight: 700;">Qty</th>
-            <th style="width: 15%; text-align: right; border: 1px solid #052c6d; padding: 8px 10px; font-size: 11.5px; font-weight: 700;">Taxable Value (₹)</th>
+            <th style="width: 15%; text-align: right; border: 1px solid #052c6d; padding: 8px 10px; font-size: 11.5px; font-weight: 700;">Rate of an Item (₹)</th>
             <th style="width: 15%; text-align: right; border: 1px solid #052c6d; padding: 8px 10px; font-size: 11.5px; font-weight: 700;">Line Total (₹)</th>
           </tr>
         </thead>

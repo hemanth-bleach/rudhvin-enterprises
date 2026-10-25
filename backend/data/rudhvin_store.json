@@ -8579,6 +8579,34 @@
       "timestamp": "2026-10-25T14:43:24.339Z",
       "createdAt": "2026-10-25T14:48:07.202Z",
       "updatedAt": "2026-10-25T14:48:07.202Z"
+    },
+    {
+      "_id": "5bccc3945f15906b4807c24b",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-25T14:43:24.339Z",
+      "createdAt": "2026-10-25T15:55:10.075Z",
+      "updatedAt": "2026-10-25T15:55:10.075Z"
+    },
+    {
+      "_id": "cc5c9e96f607025582a3c146",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-25T15:58:17.305Z",
+      "createdAt": "2026-10-25T15:58:37.538Z",
+      "updatedAt": "2026-10-25T15:58:37.538Z"
     }
   ]
 }
