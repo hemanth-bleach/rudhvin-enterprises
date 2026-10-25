@@ -35,7 +35,9 @@ export function getInvoiceHtml(invoice) {
   const itemsRows = items
     .map(
       (item, idx) => {
-        const taxableVal = item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount || (item.quantity * (item.unitRate || item.rate || 0)));
+        const taxableVal = invoice.isTaxInclusive
+          ? (item.lineTotal !== undefined ? item.lineTotal : (item.taxableValue !== undefined ? item.taxableValue : (item.quantity * (item.unitRate || item.rate || 0))))
+          : (item.taxableValue !== undefined ? item.taxableValue : (item.taxableAmount || (item.quantity * (item.unitRate || item.rate || 0))));
         const lineTot = item.lineTotal !== undefined ? item.lineTotal : (item.totalAmount || taxableVal);
         const qtyStr = `${item.quantity} ${item.unit || 'piece'}`;
 
@@ -71,7 +73,9 @@ export function getInvoiceHtml(invoice) {
     .join('');
 
   // GST Calculation rows
-  const taxableValueTotal = invoice.taxableValue !== undefined ? invoice.taxableValue : (invoice.taxableAmount || invoice.subtotal || 0);
+  const taxableValueTotal = invoice.isTaxInclusive
+    ? (invoice.grandTotal !== undefined ? invoice.grandTotal : (invoice.totalAmount || invoice.taxableValue || 0))
+    : (invoice.taxableValue !== undefined ? invoice.taxableValue : (invoice.taxableAmount || invoice.subtotal || 0));
   const totalGst = invoice.totalGst !== undefined ? invoice.totalGst : (invoice.taxBreakdown?.totalTax || 0);
   const primaryTaxRate = invoice.taxBreakdown?.taxRate || 0;
 

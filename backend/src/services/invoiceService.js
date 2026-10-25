@@ -129,8 +129,8 @@ export function calculateInvoiceTotals(
       }
       const netInclusive = round(lineGross - discAmount);
 
-      taxableValue = gstRate > 0 ? round(netInclusive / (1 + gstRate / 100)) : netInclusive;
-      lineGstAmount = round(netInclusive - taxableValue);
+      const baseTaxable = gstRate > 0 ? round(netInclusive / (1 + gstRate / 100)) : netInclusive;
+      lineGstAmount = round(netInclusive - baseTaxable);
 
       if (isInterState) {
         igstRate = gstRate;
@@ -139,12 +139,14 @@ export function calculateInvoiceTotals(
       } else {
         cgstRate = round(gstRate / 2, 2);
         sgstRate = round(gstRate / 2, 2);
-        cgstAmount = round((taxableValue * (gstRate / 2)) / 100);
+        cgstAmount = round((baseTaxable * (gstRate / 2)) / 100);
         sgstAmount = round(lineGstAmount - cgstAmount);
         totalCgstAmount = round(totalCgstAmount + cgstAmount);
         totalSgstAmount = round(totalSgstAmount + sgstAmount);
       }
 
+      // Both Taxable Value and Line Total display the same value (net contract amount, e.g. ₹1,000.00)
+      taxableValue = netInclusive;
       lineTotal = netInclusive;
     } else {
       // Tax-Exclusive: GST is calculated on Taxable Value and added to reach Line Total.
@@ -228,9 +230,12 @@ export function calculateInvoiceTotals(
     };
   });
 
+  const isInvoiceTaxInclusive = Boolean(options.isTaxInclusive || calculatedItems.some(item => item.isTaxInclusive));
   const totalDiscount = round(totalItemDiscount + (Number(manualDiscount) || 0));
   const totalGst = round(isInterState ? totalIgstAmount : totalCgstAmount + totalSgstAmount);
-  const grandTotal = round(totalTaxableValue + totalGst - (Number(manualDiscount) || 0));
+  const grandTotal = isInvoiceTaxInclusive
+    ? round(totalTaxableValue - (Number(manualDiscount) || 0))
+    : round(totalTaxableValue + totalGst - (Number(manualDiscount) || 0));
 
   const primaryTaxRate = calculatedItems.reduce((max, item) => Math.max(max, item.gstRate || 0), 0);
   const rateBreakdown = Object.values(rateGroups);
