@@ -81,7 +81,7 @@ export default function InvoiceDocument({ invoice, className = '' }) {
               <div className="text-[11px] font-bold text-[#052c6d] mt-1 flex flex-wrap items-center justify-center gap-2">
                 <span>GSTIN: <strong>{seller.gstin || '37DGBPV1007R1ZU'}</strong></span>
                 <span>•</span>
-                <span>Ph: <strong>{seller.mobile || seller.phone || '+91 9652496933'}</strong></span>
+                <span>Ph: <strong>{seller.mobile || seller.phone || '+91 9652498933'}</strong></span>
                 <span>•</span>
                 <span>Email: <strong>{seller.email || 'rudhvinenterprises@gmail.com'}</strong></span>
               </div>
@@ -298,7 +298,7 @@ export default function InvoiceDocument({ invoice, className = '' }) {
                 AUTHORIZED SIGNATORY
               </div>
               <div className="text-[10px] text-slate-500 mt-0.5">
-                {seller.mobile || seller.phone || '+91 9652496933'} | {seller.email || 'rudhvinenterprises@gmail.com'}
+                {seller.mobile || seller.phone || '+91 9652498933'} | {seller.email || 'rudhvinenterprises@gmail.com'}
               </div>
             </div>
           </div>

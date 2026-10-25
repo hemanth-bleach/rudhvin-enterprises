@@ -102,20 +102,33 @@ export default function Dashboard() {
         throw new Error(json.message || 'Server error generating PDF');
       }
 
-      const slice = await res.data.slice(0, 5).text();
-      if (!slice.startsWith('%PDF')) {
+      let isPdf = false;
+      try {
+        if (res.data instanceof Blob) {
+          const slice = await res.data.slice(0, 5).text();
+          isPdf = slice.startsWith('%PDF');
+        } else {
+          isPdf = true;
+        }
+      } catch (e) {
+        isPdf = true;
+      }
+
+      if (!isPdf) {
         throw new Error('Received invalid PDF format from server');
       }
 
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const safeName = String(invoiceNumber || 'invoice').replace(/[/\\:*?"<>|]/g, '_');
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${invoiceNumber}.pdf`);
+      link.setAttribute('download', `${safeName}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast.success(`Downloaded ${invoiceNumber}.pdf`, { id: 'pdf-toast' });
+      toast.success(`Downloaded ${safeName}.pdf`, { id: 'pdf-toast' });
     } catch (err) {
       console.error('PDF download error:', err);
       toast.error(err.message || 'Failed to download PDF. Open invoice details and click Print > Save as PDF.', { id: 'pdf-toast', duration: 4500 });

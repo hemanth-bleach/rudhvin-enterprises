@@ -604,11 +604,13 @@ export const getInvoicePdf = async (req, res, next) => {
 
     const invoice = normalizeInvoice(rawInvoice);
     const pdfBuffer = await generateInvoicePdfBuffer(invoice);
+    const binaryBuffer = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
 
+    const safeFilename = String(invoice.invoiceNumber || 'invoice').replace(/[/\\:*?"<>|]/g, '_');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${invoice.invoiceNumber}.pdf"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.status(200).send(pdfBuffer);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}.pdf"`);
+    res.setHeader('Content-Length', binaryBuffer.length);
+    return res.end(binaryBuffer, 'binary');
   } catch (error) {
     console.error('PDF Generation error:', error);
     next(error);

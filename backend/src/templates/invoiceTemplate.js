@@ -223,7 +223,7 @@ export function getInvoiceHtml(invoice) {
             <div style="font-size: 11.5px; color: #052c6d; font-weight: 700; margin-top: 4px;">
               <span>GSTIN: <strong>${seller.gstin || '37DGBPV1007R1ZU'}</strong></span>
               &nbsp;&nbsp;•&nbsp;&nbsp;
-              <span>Ph: <strong>${seller.mobile || seller.phone || '+91 9652496933'}</strong></span>
+              <span>Ph: <strong>${seller.mobile || seller.phone || '+91 9652498933'}</strong></span>
               &nbsp;&nbsp;•&nbsp;&nbsp;
               <span>Email: <strong>${seller.email || 'rudhvinenterprises@gmail.com'}</strong></span>
             </div>
@@ -365,7 +365,7 @@ export function getInvoiceHtml(invoice) {
             <div style="border-top: 1px dashed #64748b; width: 190px; margin-left: auto; margin-bottom: 4px;"></div>
             <div style="font-weight: 800; color: #052c6d; font-size: 11px; letter-spacing: 0.5px;">AUTHORIZED SIGNATORY</div>
             <div style="font-size: 10px; color: #475569; margin-top: 2px;">
-              ${seller.mobile || seller.phone || '+91 9652496933'} | ${seller.email || 'rudhvinenterprises@gmail.com'}
+              ${seller.mobile || seller.phone || '+91 9652498933'} | ${seller.email || 'rudhvinenterprises@gmail.com'}
             </div>
           </td>
         </tr>
