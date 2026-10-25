@@ -1,5 +1,7 @@
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { getInvoiceHtml } from '../templates/invoiceTemplate.js';
 
 function getBrowserPath() {
@@ -12,6 +14,11 @@ function getBrowserPath() {
   }
 
   const standardPaths = [
+    // Windows
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     // Linux / Docker / Cloud Servers
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
@@ -20,12 +27,7 @@ function getBrowserPath() {
     '/snap/bin/chromium',
     // macOS
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    // Windows
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
   ];
 
   for (const p of standardPaths) {
@@ -40,17 +42,29 @@ function getBrowserPath() {
 export async function generateInvoicePdfBuffer(invoice) {
   const browserPath = getBrowserPath();
   const html = getInvoiceHtml(invoice);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rudhvin-pdf-'));
 
-  const browser = await puppeteer.launch({
-    executablePath: browserPath,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-  });
-
+  let browser;
   try {
+    browser = await puppeteer.launch({
+      executablePath: browserPath,
+      headless: true,
+      userDataDir: tempDir,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-extensions'
+      ]
+    });
+
     const page = await browser.newPage();
     await page.setContent(html, {
-      waitUntil: 'networkidle0'
+      waitUntil: 'networkidle0',
+      timeout: 30000
     });
 
     const pdfBuffer = await page.pdf({
@@ -61,6 +75,13 @@ export async function generateInvoicePdfBuffer(invoice) {
 
     return pdfBuffer;
   } finally {
-    await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (err) {}
+    }
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (err) {}
   }
 }

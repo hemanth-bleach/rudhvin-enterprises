@@ -95,6 +95,18 @@ export default function Dashboard() {
     try {
       toast.loading(`Generating PDF for ${invoiceNumber}...`, { id: 'pdf-toast' });
       const res = await api.get(`/invoices/${invoiceId}/pdf`, { responseType: 'blob' });
+
+      if (res.data.type === 'application/json' || (res.headers['content-type'] && res.headers['content-type'].includes('application/json'))) {
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json.message || 'Server error generating PDF');
+      }
+
+      const slice = await res.data.slice(0, 5).text();
+      if (!slice.startsWith('%PDF')) {
+        throw new Error('Received invalid PDF format from server');
+      }
+
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -102,9 +114,11 @@ export default function Dashboard() {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
       toast.success(`Downloaded ${invoiceNumber}.pdf`, { id: 'pdf-toast' });
     } catch (err) {
-      toast.error('Failed to download PDF', { id: 'pdf-toast' });
+      console.error('PDF download error:', err);
+      toast.error(err.message || 'Failed to download PDF. Open invoice details and click Print > Save as PDF.', { id: 'pdf-toast', duration: 4500 });
     }
   };
 

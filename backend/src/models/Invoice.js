@@ -8,6 +8,7 @@ const invoiceDefaults = {
   gemContractNumber: '',
   placeOfSupply: '',
   isSample: false,
+  isTaxInclusive: false,
   taxTreatment: 'auto',
   customer: null,
   sellerSnapshot: {},
@@ -81,7 +82,9 @@ if (process.env.MONGODB_URI && process.env.MONGODB_URI !== 'embedded') {
       gstAmount: { type: Number, default: 0 },
       taxAmount: { type: Number, default: 0 },
       lineTotal: { type: Number, required: true, default: 0 },
-      totalAmount: { type: Number, default: 0 }
+      totalAmount: { type: Number, default: 0 },
+      isTaxInclusive: { type: Boolean, default: false },
+      inclusiveRate: { type: Number, default: 0 }
     },
     { _id: false }
   );
@@ -94,6 +97,7 @@ if (process.env.MONGODB_URI && process.env.MONGODB_URI !== 'embedded') {
       gemContractNumber: { type: String, default: '', trim: true },
       placeOfSupply: { type: String, default: '', trim: true },
       isSample: { type: Boolean, default: false },
+      isTaxInclusive: { type: Boolean, default: false },
       taxTreatment: { type: String, enum: ['auto', 'intra_state', 'inter_state'], default: 'auto' },
       customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
       sellerSnapshot: { type: Object, default: {} },

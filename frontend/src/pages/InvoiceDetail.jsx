@@ -37,6 +37,20 @@ export default function InvoiceDetail() {
     try {
       toast.loading(`Downloading ${invoice.invoiceNumber}.pdf...`, { id: 'pdf-dl' });
       const res = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+
+      // Check if response is actually a JSON error wrapped in a blob
+      if (res.data.type === 'application/json' || (res.headers['content-type'] && res.headers['content-type'].includes('application/json'))) {
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json.message || 'Server error generating PDF');
+      }
+
+      // Check for PDF signature (%PDF-)
+      const slice = await res.data.slice(0, 5).text();
+      if (!slice.startsWith('%PDF')) {
+        throw new Error('Received invalid PDF format from server');
+      }
+
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -44,9 +58,11 @@ export default function InvoiceDetail() {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
       toast.success(`Downloaded ${invoice.invoiceNumber}.pdf!`, { id: 'pdf-dl' });
     } catch (err) {
-      toast.error('Failed to download PDF', { id: 'pdf-dl' });
+      console.error('PDF download error:', err);
+      toast.error(err.message || 'Failed to download PDF. You can use the Print button to Save as PDF.', { id: 'pdf-dl', duration: 4500 });
     }
   };
 

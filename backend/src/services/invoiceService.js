@@ -99,44 +99,81 @@ export function calculateInvoiceTotals(
   const calculatedItems = (items || []).map((item, idx) => {
     const qty = Number(item.quantity) || 0;
     const unitRate = Number(item.unitRate !== undefined ? item.unitRate : item.rate) || 0;
-    const lineGross = round(qty * unitRate);
-
-    let discPercent = Number(item.discountPercent) || 0;
-    let discAmount = 0;
-    if (item.discountAmount !== undefined && item.discountAmount > 0 && !item.discountPercent) {
-      discAmount = round(Number(item.discountAmount));
-      discPercent = lineGross > 0 ? round((discAmount / lineGross) * 100, 2) : 0;
-    } else {
-      discAmount = round((lineGross * discPercent) / 100);
-    }
-
-    const taxableValue = round(lineGross - discAmount);
+    const isTaxInclusive = Boolean(
+      item.isTaxInclusive !== undefined
+        ? item.isTaxInclusive
+        : (item.priceIncludesTax !== undefined ? item.priceIncludesTax : options.isTaxInclusive)
+    );
     const gstRate = Number(item.gstRate !== undefined ? item.gstRate : item.taxRate) || 0;
 
+    let lineGross = round(qty * unitRate);
+    let discPercent = Number(item.discountPercent) || 0;
+    let discAmount = 0;
+    let taxableValue = 0;
+    let lineGstAmount = 0;
     let cgstRate = 0;
     let cgstAmount = 0;
     let sgstRate = 0;
     let sgstAmount = 0;
     let igstRate = 0;
     let igstAmount = 0;
-    let lineGstAmount = 0;
+    let lineTotal = 0;
 
-    if (isInterState) {
-      igstRate = gstRate;
-      igstAmount = round((taxableValue * gstRate) / 100);
-      lineGstAmount = igstAmount;
-      totalIgstAmount = round(totalIgstAmount + igstAmount);
+    if (isTaxInclusive) {
+      // Tax-Inclusive: Rate/line total includes GST. CGST and SGST are subtracted (minus) from the gross/rate to calculate Taxable Value.
+      if (item.discountAmount !== undefined && item.discountAmount > 0 && !item.discountPercent) {
+        discAmount = round(Number(item.discountAmount));
+        discPercent = lineGross > 0 ? round((discAmount / lineGross) * 100, 2) : 0;
+      } else {
+        discAmount = round((lineGross * discPercent) / 100);
+      }
+      const netInclusive = round(lineGross - discAmount);
+
+      taxableValue = gstRate > 0 ? round(netInclusive / (1 + gstRate / 100)) : netInclusive;
+      lineGstAmount = round(netInclusive - taxableValue);
+
+      if (isInterState) {
+        igstRate = gstRate;
+        igstAmount = lineGstAmount;
+        totalIgstAmount = round(totalIgstAmount + igstAmount);
+      } else {
+        cgstRate = round(gstRate / 2, 2);
+        sgstRate = round(gstRate / 2, 2);
+        cgstAmount = round((taxableValue * (gstRate / 2)) / 100);
+        sgstAmount = round(lineGstAmount - cgstAmount);
+        totalCgstAmount = round(totalCgstAmount + cgstAmount);
+        totalSgstAmount = round(totalSgstAmount + sgstAmount);
+      }
+
+      lineTotal = netInclusive;
     } else {
-      cgstRate = round(gstRate / 2, 2);
-      sgstRate = round(gstRate / 2, 2);
-      cgstAmount = round((taxableValue * (gstRate / 2)) / 100);
-      sgstAmount = round((taxableValue * (gstRate / 2)) / 100);
-      lineGstAmount = round(cgstAmount + sgstAmount);
-      totalCgstAmount = round(totalCgstAmount + cgstAmount);
-      totalSgstAmount = round(totalSgstAmount + sgstAmount);
-    }
+      // Tax-Exclusive: GST is calculated on Taxable Value and added to reach Line Total.
+      if (item.discountAmount !== undefined && item.discountAmount > 0 && !item.discountPercent) {
+        discAmount = round(Number(item.discountAmount));
+        discPercent = lineGross > 0 ? round((discAmount / lineGross) * 100, 2) : 0;
+      } else {
+        discAmount = round((lineGross * discPercent) / 100);
+      }
 
-    const lineTotal = round(taxableValue + lineGstAmount);
+      taxableValue = round(lineGross - discAmount);
+
+      if (isInterState) {
+        igstRate = gstRate;
+        igstAmount = round((taxableValue * gstRate) / 100);
+        lineGstAmount = igstAmount;
+        totalIgstAmount = round(totalIgstAmount + igstAmount);
+      } else {
+        cgstRate = round(gstRate / 2, 2);
+        sgstRate = round(gstRate / 2, 2);
+        cgstAmount = round((taxableValue * (gstRate / 2)) / 100);
+        sgstAmount = round((taxableValue * (gstRate / 2)) / 100);
+        lineGstAmount = round(cgstAmount + sgstAmount);
+        totalCgstAmount = round(totalCgstAmount + cgstAmount);
+        totalSgstAmount = round(totalSgstAmount + sgstAmount);
+      }
+
+      lineTotal = round(taxableValue + lineGstAmount);
+    }
 
     grossSubtotal = round(grossSubtotal + lineGross);
     totalItemDiscount = round(totalItemDiscount + discAmount);
@@ -170,6 +207,8 @@ export function calculateInvoiceTotals(
       unit: item.unit?.trim() || 'PCS',
       unitRate: unitRate,
       rate: unitRate, // backward compatible alias
+      isTaxInclusive,
+      inclusiveRate: isTaxInclusive ? unitRate : round(unitRate * (1 + gstRate / 100)),
       discountPercent: discPercent,
       discountAmount: discAmount,
       taxableValue: taxableValue,
@@ -221,6 +260,7 @@ export function calculateInvoiceTotals(
       rateBreakdown
     },
     grandTotal,
+    isTaxInclusive: Boolean(options.isTaxInclusive),
     amountInWords: numberToWords(grandTotal)
   };
 }

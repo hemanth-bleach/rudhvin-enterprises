@@ -50,6 +50,7 @@ export default function CreateInvoice() {
   const [placeOfSupply, setPlaceOfSupply] = useState('37 - Andhra Pradesh');
   const [isSample, setIsSample] = useState(false);
   const [taxTreatment, setTaxTreatment] = useState('auto');
+  const [isTaxInclusive, setIsTaxInclusive] = useState(true);
   const [paymentTerms, setPaymentTerms] = useState('Due on Receipt');
   const [notes, setNotes] = useState('');
   const [poNumber, setPoNumber] = useState('');
@@ -64,9 +65,10 @@ export default function CreateInvoice() {
       hsnSac: '6304',
       quantity: 1,
       unit: 'piece',
-      rate: 847.46,
+      rate: 1000,
       discountPercent: 0,
-      taxRate: 18
+      taxRate: 18,
+      isTaxInclusive: true
     }
   ]);
 
@@ -141,6 +143,9 @@ export default function CreateInvoice() {
       setPoNumber(existingInvoiceData.poNumber || '');
       setReferenceNumber(existingInvoiceData.referenceNumber || '');
       setDiscountAmount(existingInvoiceData.totalDiscount || 0);
+      if (existingInvoiceData.isTaxInclusive !== undefined) {
+        setIsTaxInclusive(Boolean(existingInvoiceData.isTaxInclusive));
+      }
 
       const custId = existingInvoiceData.customer?._id || existingInvoiceData.customer;
       if (custId) {
@@ -156,7 +161,8 @@ export default function CreateInvoice() {
         unit: it.unit || 'PCS',
         rate: Number(it.unitRate !== undefined ? it.unitRate : it.rate) || 0,
         discountPercent: Number(it.discountPercent) || 0,
-        taxRate: Number(it.gstRate !== undefined ? it.gstRate : it.taxRate) || 0
+        taxRate: Number(it.gstRate !== undefined ? it.gstRate : it.taxRate) || 0,
+        isTaxInclusive: it.isTaxInclusive !== undefined ? Boolean(it.isTaxInclusive) : Boolean(existingInvoiceData.isTaxInclusive)
       }));
 
       if (existingItems.length > 0) {
@@ -277,35 +283,65 @@ export default function CreateInvoice() {
     const calculatedItems = items.map((item, idx) => {
       const qty = Number(item.quantity) || 0;
       const unitRate = Number(item.rate) || 0;
-      const lineGross = round(qty * unitRate);
-      const disc = round((lineGross * (Number(item.discountPercent) || 0)) / 100);
-      const taxableValue = round(lineGross - disc);
       const gstRate = Number(item.taxRate) || 0;
+      const discPercent = Number(item.discountPercent) || 0;
+      const itemTaxInclusive = item.isTaxInclusive !== undefined ? Boolean(item.isTaxInclusive) : Boolean(isTaxInclusive);
 
+      let lineGross = 0;
+      let disc = 0;
+      let taxableValue = 0;
+      let lineGst = 0;
       let cgst = 0;
       let sgst = 0;
       let igst = 0;
-      let lineGst = 0;
+      let lineTotal = 0;
 
-      if (isInterState) {
-        igst = round((taxableValue * gstRate) / 100);
-        lineGst = igst;
-        totalIgst = round(totalIgst + igst);
+      if (itemTaxInclusive) {
+        // Tax-Inclusive: Rate includes GST. CGST and SGST are subtracted (minus) to calculate Taxable Value.
+        lineGross = round(qty * unitRate);
+        disc = round((lineGross * discPercent) / 100);
+        const netInclusive = round(lineGross - disc);
+        taxableValue = gstRate > 0 ? round(netInclusive / (1 + gstRate / 100)) : netInclusive;
+        lineGst = round(netInclusive - taxableValue);
+
+        if (isInterState) {
+          igst = lineGst;
+          totalIgst = round(totalIgst + igst);
+        } else {
+          cgst = round((taxableValue * (gstRate / 2)) / 100);
+          sgst = round(lineGst - cgst);
+          totalCgst = round(totalCgst + cgst);
+          totalSgst = round(totalSgst + sgst);
+        }
+
+        lineTotal = netInclusive;
       } else {
-        cgst = round((taxableValue * (gstRate / 2)) / 100);
-        sgst = round((taxableValue * (gstRate / 2)) / 100);
-        lineGst = round(cgst + sgst);
-        totalCgst = round(totalCgst + cgst);
-        totalSgst = round(totalSgst + sgst);
-      }
+        // Tax-Exclusive: GST is calculated on Taxable Value and added to reach Line Total.
+        lineGross = round(qty * unitRate);
+        disc = round((lineGross * discPercent) / 100);
+        taxableValue = round(lineGross - disc);
 
-      const lineTotal = round(taxableValue + lineGst);
+        if (isInterState) {
+          igst = round((taxableValue * gstRate) / 100);
+          lineGst = igst;
+          totalIgst = round(totalIgst + igst);
+        } else {
+          cgst = round((taxableValue * (gstRate / 2)) / 100);
+          sgst = round((taxableValue * (gstRate / 2)) / 100);
+          lineGst = round(cgst + sgst);
+          totalCgst = round(totalCgst + cgst);
+          totalSgst = round(totalSgst + sgst);
+        }
+
+        lineTotal = round(taxableValue + lineGst);
+      }
 
       subtotal = round(subtotal + lineGross);
       totalTaxableValue = round(totalTaxableValue + taxableValue);
 
       return {
         ...item,
+        isTaxInclusive: itemTaxInclusive,
         serialNumber: idx + 1,
         unitRate: unitRate,
         rate: unitRate,
@@ -362,6 +398,7 @@ export default function CreateInvoice() {
     gemContractNumber: gemContractNumber,
     placeOfSupply: placeOfSupply,
     isSample: isSample,
+    isTaxInclusive: isTaxInclusive,
     paymentTerms: paymentTerms,
     poNumber: poNumber,
     sellerSnapshot: company || {
@@ -422,6 +459,7 @@ export default function CreateInvoice() {
         gemContractNumber: gemContractNumber.trim(),
         placeOfSupply: placeOfSupply.trim(),
         isSample: Boolean(isSample),
+        isTaxInclusive: Boolean(isTaxInclusive),
         taxTreatment,
         paymentTerms,
         notes,
@@ -438,7 +476,8 @@ export default function CreateInvoice() {
           unitRate: Number(i.rate),
           discountPercent: Number(i.discountPercent) || 0,
           taxRate: Number(i.taxRate) || 0,
-          gstRate: Number(i.taxRate) || 0
+          gstRate: Number(i.taxRate) || 0,
+          isTaxInclusive: i.isTaxInclusive !== undefined ? Boolean(i.isTaxInclusive) : Boolean(isTaxInclusive)
         })),
         status: statusToSet
       };
@@ -470,6 +509,18 @@ export default function CreateInvoice() {
     try {
       toast.loading('Downloading PDF...', { id: 'pdf-dl' });
       const res = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+
+      if (res.data.type === 'application/json' || (res.headers['content-type'] && res.headers['content-type'].includes('application/json'))) {
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json.message || 'Server error generating PDF');
+      }
+
+      const slice = await res.data.slice(0, 5).text();
+      if (!slice.startsWith('%PDF')) {
+        throw new Error('Received invalid PDF format from server');
+      }
+
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -477,9 +528,11 @@ export default function CreateInvoice() {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
       toast.success('Downloaded PDF!', { id: 'pdf-dl' });
     } catch (err) {
-      toast.error('Failed to download PDF', { id: 'pdf-dl' });
+      console.error('PDF download error:', err);
+      toast.error(err.message || 'Failed to download PDF. Try Print > Save as PDF.', { id: 'pdf-dl', duration: 4500 });
     }
   };
 
@@ -786,14 +839,76 @@ export default function CreateInvoice() {
                 </button>
               </div>
 
+              {/* GST Calculation Mode Banner / Switch */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl mb-3 shadow-2xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#052c6d]">GST Calculation Mode:</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-[#052c6d] text-white">
+                      {isTaxInclusive ? 'Tax-Inclusive (Minus CGST & SGST)' : 'Tax-Exclusive (Add GST)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                    {isTaxInclusive
+                      ? 'Rates entered include GST. CGST and SGST are subtracted (minus) to compute Taxable Value (e.g. ₹1,000 Total → ₹847.46 Taxable + ₹76.27 CGST + ₹76.27 SGST).'
+                      : 'Rates entered exclude GST. CGST and SGST are calculated on Taxable Value and added to reach Line Total.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsTaxInclusive(true)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      isTaxInclusive
+                        ? 'bg-[#052c6d] text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Tax-Inclusive (Minus GST)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsTaxInclusive(false)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      !isTaxInclusive
+                        ? 'bg-[#052c6d] text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Tax-Exclusive (Add GST)
+                  </button>
+                </div>
+              </div>
+
               {/* Items Card List */}
               <div className="space-y-4">
                 {items.map((item, idx) => {
-                  const lineGross = item.quantity * item.rate;
-                  const disc = (lineGross * (item.discountPercent || 0)) / 100;
-                  const taxable = lineGross - disc;
-                  const gst = (taxable * (item.taxRate || 0)) / 100;
-                  const total = taxable + gst;
+                  const itemTaxInclusive = item.isTaxInclusive !== undefined ? Boolean(item.isTaxInclusive) : Boolean(isTaxInclusive);
+                  const isInterState = totals.taxBreakdown?.isInterState;
+                  let lineGross = 0;
+                  let disc = 0;
+                  let taxable = 0;
+                  let gst = 0;
+                  let total = 0;
+
+                  if (itemTaxInclusive) {
+                    lineGross = round((item.quantity || 0) * (item.rate || 0));
+                    disc = round((lineGross * (item.discountPercent || 0)) / 100);
+                    const netIncl = round(lineGross - disc);
+                    const gstRate = item.taxRate || 0;
+                    taxable = gstRate > 0 ? round(netIncl / (1 + gstRate / 100)) : netIncl;
+                    gst = round(netIncl - taxable);
+                    total = netIncl;
+                  } else {
+                    lineGross = round((item.quantity || 0) * (item.rate || 0));
+                    disc = round((lineGross * (item.discountPercent || 0)) / 100);
+                    taxable = round(lineGross - disc);
+                    const gstRate = item.taxRate || 0;
+                    const cgst = round((taxable * (gstRate / 2)) / 100);
+                    const sgst = round((taxable * (gstRate / 2)) / 100);
+                    gst = round(cgst + sgst);
+                    total = round(taxable + gst);
+                  }
 
                   return (
                     <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 relative group space-y-3">
@@ -906,7 +1021,9 @@ export default function CreateInvoice() {
                         </div>
 
                         <div>
-                          <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Unit Rate (₹) *</label>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">
+                            {itemTaxInclusive ? 'Unit Rate (Incl. GST ₹) *' : 'Unit Rate (Excl. GST ₹) *'}
+                          </label>
                           <input
                             type="number"
                             step="0.01"
@@ -947,18 +1064,41 @@ export default function CreateInvoice() {
                       </div>
 
                       {/* Live Calculated Row Details */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/70 text-[11px]">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200/70 text-[11px]">
                         <div>
-                          <span className="text-slate-500 font-medium">Taxable Value: </span>
-                          <span className="font-bold text-slate-800">{formatINR(taxable)}</span>
+                          <span className="text-slate-500 font-medium">Gross: </span>
+                          <span className="font-bold text-slate-800">{formatINR(lineGross)}</span>
                         </div>
-                        <div>
-                          <span className="text-slate-500 font-medium">GST Amount: </span>
-                          <span className="font-bold text-slate-800">{formatINR(gst)}</span>
-                        </div>
+                        {itemTaxInclusive ? (
+                          <>
+                            <div>
+                              <span className="text-emerald-700 font-medium">
+                                Minus {isInterState ? `IGST (${item.taxRate}%)` : `CGST (${item.taxRate / 2}%) + SGST (${item.taxRate / 2}%)`}:{' '}
+                              </span>
+                              <span className="font-bold text-emerald-700">-{formatINR(gst)}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 font-medium">Taxable Value: </span>
+                              <span className="font-extrabold text-[#052c6d]">{formatINR(taxable)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <span className="text-slate-500 font-medium">Taxable Value: </span>
+                              <span className="font-extrabold text-[#052c6d]">{formatINR(taxable)}</span>
+                            </div>
+                            <div>
+                              <span className="text-blue-700 font-medium">
+                                + {isInterState ? `IGST (${item.taxRate}%)` : `CGST + SGST`}:{' '}
+                              </span>
+                              <span className="font-bold text-blue-700">+{formatINR(gst)}</span>
+                            </div>
+                          </>
+                        )}
                         <div className="text-right">
                           <span className="text-slate-500 font-medium">Line Total: </span>
-                          <span className="font-black text-blue-700">{formatINR(total)}</span>
+                          <span className="font-black text-blue-800 text-xs">{formatINR(total)}</span>
                         </div>
                       </div>
                     </div>

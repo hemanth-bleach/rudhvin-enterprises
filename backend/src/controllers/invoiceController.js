@@ -72,6 +72,7 @@ export function normalizeInvoice(inv) {
     gemContractNumber: inv.gemContractNumber || '',
     placeOfSupply: inv.placeOfSupply || inv.customerSnapshot?.state || '',
     isSample: Boolean(inv.isSample),
+    isTaxInclusive: Boolean(inv.isTaxInclusive),
     invoiceStatus: inv.status || 'draft',
     amountInWords: inv.amountInWords || numberToWords(inv.grandTotal)
   };
@@ -231,6 +232,7 @@ export const createInvoice = async (req, res, next) => {
       gemContractNumber = '',
       placeOfSupply = '',
       isSample = false,
+      isTaxInclusive = false,
       taxTreatment = 'auto',
       paymentTerms,
       notes,
@@ -263,7 +265,8 @@ export const createInvoice = async (req, res, next) => {
       discount,
       {
         placeOfSupply: pos,
-        taxTreatment
+        taxTreatment,
+        isTaxInclusive: Boolean(isTaxInclusive)
       }
     );
 
@@ -296,6 +299,7 @@ export const createInvoice = async (req, res, next) => {
       gemContractNumber: gemContractNumber.trim(),
       placeOfSupply: pos,
       isSample: Boolean(isSample),
+      isTaxInclusive: Boolean(isTaxInclusive || calculations.isTaxInclusive),
       taxTreatment,
       customer: customer._id,
       sellerSnapshot: {
@@ -399,6 +403,7 @@ export const updateInvoice = async (req, res, next) => {
     const customerStateCode = invoice.customerSnapshot?.stateCode || '37';
     const pos = req.body.placeOfSupply !== undefined ? req.body.placeOfSupply : invoice.placeOfSupply;
     const taxTreatment = req.body.taxTreatment || invoice.taxTreatment || 'auto';
+    const isTaxInclusive = req.body.isTaxInclusive !== undefined ? Boolean(req.body.isTaxInclusive) : Boolean(invoice.isTaxInclusive);
 
     if (req.body.items) {
       const calculations = calculateInvoiceTotals(
@@ -408,9 +413,11 @@ export const updateInvoice = async (req, res, next) => {
         req.body.discount !== undefined ? req.body.discount : invoice.totalDiscount,
         {
           placeOfSupply: pos,
-          taxTreatment
+          taxTreatment,
+          isTaxInclusive
         }
       );
+      invoice.isTaxInclusive = isTaxInclusive;
       invoice.lineItems = calculations.items;
       invoice.items = calculations.items;
       invoice.subtotal = calculations.subtotal;
