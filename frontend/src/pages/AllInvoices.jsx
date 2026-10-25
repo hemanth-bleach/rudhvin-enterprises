@@ -140,6 +140,39 @@ export default function AllInvoices() {
     }
   };
 
+  const handleDeleteInvoice = async (id, num) => {
+    if (!window.confirm(`Are you sure you want to delete invoice ${num}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/invoices/${id}?permanent=true`);
+      toast.success(`Invoice ${num} deleted successfully`);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      queryClient.invalidateQueries({ queryKey: ['recentInvoices'] });
+      queryClient.invalidateQueries({ queryKey: ['peekInvoiceNumber'] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete invoice');
+    }
+  };
+
+  const handlePurgeOldInvoices = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL old invoices and reset the invoice numbering sequence? This will remove all old test invoices.')) {
+      return;
+    }
+    try {
+      toast.loading('Deleting old invoices...', { id: 'purge-toast' });
+      const res = await api.post('/invoices/purge-old');
+      toast.success(res.data?.message || 'Old invoices deleted successfully', { id: 'purge-toast' });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      queryClient.invalidateQueries({ queryKey: ['recentInvoices'] });
+      queryClient.invalidateQueries({ queryKey: ['peekInvoiceNumber'] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete old invoices', { id: 'purge-toast' });
+    }
+  };
+
   // Export CSV matching exact requested columns
   const handleExportCsv = async () => {
     try {
@@ -187,7 +220,18 @@ export default function AllInvoices() {
           <p className="text-xs text-slate-500 font-medium">Manage, filter, track payments, and export invoice records</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {invoices.length > 0 && (
+            <button
+              onClick={handlePurgeOldInvoices}
+              title="Delete all existing old invoices to start fresh"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold shadow-2xs transition-all"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span>Delete Old Invoices</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportCsv}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs transition-all"
@@ -534,6 +578,14 @@ export default function AllInvoices() {
                               <XCircle className="w-4 h-4" />
                             </button>
                           )}
+
+                          <button
+                            onClick={() => handleDeleteInvoice(inv._id, inv.invoiceNumber)}
+                            title="Delete Invoice"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>

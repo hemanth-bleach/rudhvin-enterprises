@@ -10,7 +10,8 @@ import {
   Clock,
   CheckCircle,
   FileText,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
 import api from '../api/axios';
 import { formatINR, formatDate, getStatusBadge, numberToWords } from '../utils/formatters';
@@ -60,6 +61,23 @@ export default function InvoiceDetail() {
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to cancel invoice');
+    }
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!window.confirm(`Are you sure you want to permanently delete invoice ${invoice.invoiceNumber}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/invoices/${id}?permanent=true`);
+      toast.success(`Invoice ${invoice.invoiceNumber} deleted successfully`);
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      queryClient.invalidateQueries({ queryKey: ['recentInvoices'] });
+      queryClient.invalidateQueries({ queryKey: ['peekInvoiceNumber'] });
+      navigate('/invoices');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete invoice');
     }
   };
 
@@ -156,6 +174,14 @@ export default function InvoiceDetail() {
               <span>Cancel</span>
             </button>
           )}
+
+          <button
+            onClick={handleDeleteInvoice}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-semibold rounded-xl transition-all shadow-2xs"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600" />
+            <span>Delete</span>
+          </button>
         </div>
       </div>
 

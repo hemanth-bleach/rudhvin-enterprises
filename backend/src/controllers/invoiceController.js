@@ -2,6 +2,7 @@ import { Invoice } from '../models/Invoice.js';
 import { Customer } from '../models/Customer.js';
 import { Company } from '../models/Company.js';
 import { Payment } from '../models/Payment.js';
+import { InvoiceSequence } from '../models/InvoiceSequence.js';
 import { getNextInvoiceNumber, peekNextInvoiceNumber, calculateInvoiceTotals } from '../services/invoiceService.js';
 import { generateInvoicePdfBuffer } from '../services/pdfService.js';
 import { getInvoiceHtml } from '../templates/invoiceTemplate.js';
@@ -266,8 +267,21 @@ export const createInvoice = async (req, res, next) => {
       }
     );
 
-    // Generate atomic next invoice number
-    const invoiceNumber = await getNextInvoiceNumber();
+    // Editable Invoice Number: Use provided custom number if present, or auto-generate
+    let invoiceNumber;
+    if (req.body.invoiceNumber && req.body.invoiceNumber.trim()) {
+      const customNum = req.body.invoiceNumber.trim();
+      const existing = await Invoice.findOne({ invoiceNumber: customNum, isDeleted: false });
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Invoice number "${customNum}" is already in use by another invoice.`
+        });
+      }
+      invoiceNumber = customNum;
+    } else {
+      invoiceNumber = await getNextInvoiceNumber();
+    }
 
     const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
     const invDueDate = dueDate ? new Date(dueDate) : new Date(invDate.getTime() + 15 * 24 * 60 * 60 * 1000);
@@ -411,6 +425,24 @@ export const updateInvoice = async (req, res, next) => {
       invoice.grandTotal = calculations.grandTotal;
       invoice.balanceDue = Math.max(0, calculations.grandTotal - invoice.amountPaid);
       invoice.amountInWords = calculations.amountInWords;
+    }
+
+    if (req.body.invoiceNumber && req.body.invoiceNumber.trim()) {
+      const customNum = req.body.invoiceNumber.trim();
+      if (customNum !== invoice.invoiceNumber) {
+        const existing = await Invoice.findOne({
+          invoiceNumber: customNum,
+          _id: { $ne: invoice._id },
+          isDeleted: false
+        });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: `Invoice number "${customNum}" is already in use by another invoice.`
+          });
+        }
+        invoice.invoiceNumber = customNum;
+      }
     }
 
     if (req.body.gemContractNumber !== undefined) invoice.gemContractNumber = req.body.gemContractNumber.trim();
@@ -576,25 +608,73 @@ export const deleteInvoice = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Only administrators can delete invoices' });
     }
 
-    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: false });
+    const invoice = await Invoice.findOne({ _id: req.params.id });
     if (!invoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    invoice.isDeleted = true;
-    await invoice.save();
+    const invNum = invoice.invoiceNumber;
+    const isPermanent = req.query.permanent === 'true';
+
+    if (isPermanent) {
+      await Invoice.deleteOne({ _id: invoice._id });
+      await Payment.deleteMany({ invoice: invoice._id });
+    } else {
+      invoice.isDeleted = true;
+      await invoice.save();
+    }
 
     await logAudit({
       user: req.user,
       action: 'INVOICE_DELETED',
       entityType: 'Invoice',
       entityId: invoice._id,
-      notes: `Deleted invoice ${invoice.invoiceNumber}`
+      notes: `Deleted invoice ${invNum} (${isPermanent ? 'permanent' : 'soft'})`
     });
 
     res.status(200).json({
       success: true,
-      message: `Invoice ${invoice.invoiceNumber} deleted`
+      message: `Invoice ${invNum} deleted successfully`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const purgeOldInvoices = async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only administrators can purge old invoices' });
+    }
+
+    const { ids } = req.body || {};
+    let deletedCount = 0;
+
+    if (Array.isArray(ids) && ids.length > 0) {
+      for (const id of ids) {
+        await Invoice.deleteOne({ _id: id });
+        await Payment.deleteMany({ invoice: id });
+        deletedCount++;
+      }
+    } else {
+      const allInvoices = await Invoice.find({});
+      deletedCount = allInvoices.length;
+      await Invoice.deleteMany({});
+      await Payment.deleteMany({});
+      await InvoiceSequence.findOneAndUpdate({ key: 'RU' }, { currentSequence: 0 });
+    }
+
+    await logAudit({
+      user: req.user,
+      action: 'INVOICES_PURGED',
+      entityType: 'Invoice',
+      notes: `Purged ${deletedCount} old invoice(s) and reset invoice sequence`
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${deletedCount} invoice(s) successfully`,
+      deletedCount
     });
   } catch (error) {
     next(error);

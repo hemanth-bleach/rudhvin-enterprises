@@ -9,7 +9,8 @@ import {
   cancelInvoice,
   getInvoicePdf,
   getInvoiceHtmlPreview,
-  deleteInvoice
+  deleteInvoice,
+  purgeOldInvoices
 } from '../controllers/invoiceController.js';
 import { recordPayment } from '../controllers/paymentController.js';
 import { authenticate } from '../middleware/auth.js';
@@ -23,6 +24,7 @@ router.use(authenticate);
 
 router.get('/', getInvoices);
 router.get('/peek-number', peekInvoiceNo);
+router.post('/purge-old', purgeOldInvoices);
 router.get('/:id', getInvoiceById);
 router.post('/', validate(createInvoiceSchema), createInvoice);
 router.patch('/:id', validate(updateInvoiceSchema), updateInvoice);

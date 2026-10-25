@@ -21,6 +21,7 @@ export const lineItemSchema = z.object({
 });
 
 export const createInvoiceSchema = z.object({
+  invoiceNumber: z.string().trim().min(1, 'Invoice number cannot be empty').optional(),
   customerId: z.string().min(1, 'Customer is required'),
   invoiceDate: z.string().optional(),
   dueDate: z.string().optional(),
@@ -38,6 +39,7 @@ export const createInvoiceSchema = z.object({
 });
 
 export const updateInvoiceSchema = z.object({
+  invoiceNumber: z.string().trim().min(1, 'Invoice number cannot be empty').optional(),
   customerId: z.string().optional(),
   invoiceDate: z.string().optional(),
   dueDate: z.string().optional(),
