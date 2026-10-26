@@ -1,5 +1,6 @@
 import { numberToWords } from '../utils/numberToWords.js';
 import { LOGO_DATA_URI } from '../assets/logo_base64.js';
+import { RUPEE_FONT_REGULAR_BASE64, RUPEE_FONT_BOLD_BASE64 } from '../assets/fonts_base64.js';
 
 export function getInvoiceHtml(invoice) {
   const seller = invoice.sellerSnapshot || {};
@@ -134,6 +135,37 @@ export function getInvoiceHtml(invoice) {
   <meta charset="UTF-8">
   <title>Invoice ${invoice.invoiceNumber}</title>
   <style>
+    @font-face {
+      font-family: 'IndianRupee';
+      src: url('data:font/woff;charset=utf-8;base64,${RUPEE_FONT_REGULAR_BASE64}') format('woff');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'IndianRupee';
+      src: url('data:font/woff;charset=utf-8;base64,${RUPEE_FONT_BOLD_BASE64}') format('woff');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'IndianRupee';
+      src: url('data:font/woff;charset=utf-8;base64,${RUPEE_FONT_BOLD_BASE64}') format('woff');
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'IndianRupee';
+      src: url('data:font/woff;charset=utf-8;base64,${RUPEE_FONT_BOLD_BASE64}') format('woff');
+      font-weight: 800;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'IndianRupee';
+      src: url('data:font/woff;charset=utf-8;base64,${RUPEE_FONT_BOLD_BASE64}') format('woff');
+      font-weight: 900;
+      font-style: normal;
+    }
+
     @page {
       size: A4 portrait;
       margin: 6mm 8mm 8mm 8mm;
@@ -144,7 +176,7 @@ export function getInvoiceHtml(invoice) {
       print-color-adjust: exact;
     }
     body {
-      font-family: 'Segoe UI', 'Nirmala UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+      font-family: 'IndianRupee', 'DejaVu Sans', 'Noto Sans', 'Segoe UI', 'Nirmala UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
       margin: 0;
       padding: 0;
       color: #0f172a;

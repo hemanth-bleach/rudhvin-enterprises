@@ -65,9 +65,10 @@ export async function generateInvoicePdfBuffer(invoice) {
 
       const page = await browser.newPage();
       await page.setContent(html, {
-        waitUntil: 'load',
+        waitUntil: 'networkidle0',
         timeout: 20000
       });
+      await page.evaluateHandle('document.fonts.ready');
 
       const pdfBuffer = await page.pdf({
         format: 'A4',
