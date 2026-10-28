@@ -26,7 +26,9 @@ function saveToDisk() {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(DB_FILE, JSON.stringify(collections, null, 2), 'utf-8');
+    const tempFile = `${DB_FILE}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempFile, JSON.stringify(collections, null, 2), 'utf-8');
+    fs.renameSync(tempFile, DB_FILE);
   } catch (err) {
     console.error('[EmbeddedDB] Failed to save database to disk:', err.message);
   }
@@ -154,8 +156,9 @@ function matchesQuery(doc, query = {}) {
         if (!(cmpVal <= val.$lte)) return false;
       }
     } else {
-      const dStr = String(docVal?._id || docVal || '');
-      const vStr = String(val?._id || val || '');
+      if (docVal === val) continue;
+      const dStr = docVal?._id !== undefined ? String(docVal._id) : (docVal !== null && docVal !== undefined ? String(docVal) : '');
+      const vStr = val?._id !== undefined ? String(val._id) : (val !== null && val !== undefined ? String(val) : '');
       if (dStr !== vStr) {
         return false;
       }

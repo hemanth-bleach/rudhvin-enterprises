@@ -2,21 +2,17 @@ import { z } from 'zod';
 
 export const lineItemSchema = z.object({
   serialNumber: z.number().optional(),
-  description: z.string().min(1, 'Item description is required'),
-  hsnSac: z.string().min(1, 'HSN/SAC code is required'),
+  description: z.string().trim().min(1, 'Item description is required'),
+  hsnSac: z.string().optional().nullable().transform(v => (v || '').trim()),
   quantity: z.number().positive('Quantity must be greater than 0'),
-  unit: z.string().default('PCS'),
+  unit: z.string().optional().default('PCS'),
   unitRate: z.number().min(0, 'Unit rate must be non-negative').optional(),
   rate: z.number().min(0, 'Rate must be non-negative').optional(),
   discountPercent: z.number().min(0).max(100).default(0).optional(),
   discountAmount: z.number().min(0).default(0).optional(),
   isTaxInclusive: z.boolean().optional().default(true),
-  gstRate: z.number().refine(val => [0, 5, 12, 18, 28].includes(val), {
-    message: 'GST rate must be 0, 5, 12, 18, or 28%'
-  }).default(0).optional(),
-  taxRate: z.number().refine(val => [0, 5, 12, 18, 28].includes(val), {
-    message: 'Tax rate must be 0, 5, 12, 18, or 28%'
-  }).default(0).optional()
+  gstRate: z.number().min(0).max(100).default(0).optional(),
+  taxRate: z.number().min(0).max(100).default(0).optional()
 }).refine(data => data.unitRate !== undefined || data.rate !== undefined, {
   message: 'Unit rate is required'
 });

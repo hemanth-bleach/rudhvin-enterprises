@@ -498,10 +498,11 @@ export default function CreateInvoice() {
         queryClient.invalidateQueries({ queryKey: ['invoicesList'] });
         queryClient.invalidateQueries({ queryKey: ['recentInvoices'] });
         queryClient.invalidateQueries({ queryKey: ['recentActivity'] });
+        queryClient.invalidateQueries({ queryKey: ['peekInvoiceNumber'] });
         setCurrentStep(4);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save invoice');
+      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Failed to save invoice');
     } finally {
       setIsSubmitting(false);
     }

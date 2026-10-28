@@ -434,9 +434,8 @@
       "key": "RU",
       "prefix": "RU",
       "financialYear": "",
-      "currentSequence": 0,
-      "createdAt": "2026-10-19T06:37:15.999Z",
-      "updatedAt": "2026-10-25T02:09:10.763Z"
+      "currentSequence": 1,
+      "updatedAt": "2026-10-28T13:15:48.317Z"
     }
   ],
   "auditlogs": [
@@ -8621,6 +8620,156 @@
       "timestamp": "2026-10-25T16:46:35.296Z",
       "createdAt": "2026-10-25T16:47:05.336Z",
       "updatedAt": "2026-10-25T16:47:05.336Z"
+    },
+    {
+      "_id": "3f7a26a32dc211b120a6254a",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-28T13:11:00.902Z",
+      "createdAt": "2026-10-28T13:11:01.176Z",
+      "updatedAt": "2026-10-28T13:11:01.176Z"
+    },
+    {
+      "_id": "30356c71ca65b40c228b55f6",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-28T13:11:29.423Z",
+      "createdAt": "2026-10-28T13:11:29.628Z",
+      "updatedAt": "2026-10-28T13:11:29.628Z"
+    },
+    {
+      "_id": "2ca4871b63e1dcd952173782",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-28T13:14:47.672Z",
+      "createdAt": "2026-10-28T13:14:47.881Z",
+      "updatedAt": "2026-10-28T13:14:47.881Z"
+    },
+    {
+      "_id": "302940a79ea29219cb2bd1c6",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "INVOICE_ISSUED",
+      "entityType": "Invoice",
+      "entityId": "bc936c13b9b6e9fa4e9303f3",
+      "previousValues": null,
+      "newValues": {
+        "invoiceNumber": "RU002",
+        "grandTotal": 5160,
+        "status": "issued"
+      },
+      "notes": "Issued invoice RU002 for Test Customer Save (₹5160)",
+      "timestamp": "2026-10-28T13:14:47.672Z",
+      "createdAt": "2026-10-28T13:14:47.940Z",
+      "updatedAt": "2026-10-28T13:14:47.940Z"
+    },
+    {
+      "_id": "8d32251e434ef058149dd3b8",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "USER_LOGIN",
+      "entityType": "User",
+      "entityId": "d44095c9c29ad5d1fe3ce72e",
+      "previousValues": null,
+      "newValues": null,
+      "notes": "User admin@rudhvin.com logged in",
+      "timestamp": "2026-10-28T13:15:27.657Z",
+      "createdAt": "2026-10-28T13:15:27.866Z",
+      "updatedAt": "2026-10-28T13:15:27.867Z"
+    },
+    {
+      "_id": "183cfd08d90626fe44aa8a86",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "CUSTOMER_CREATED",
+      "entityType": "Customer",
+      "entityId": "7462fa523376af8d3b924a3b",
+      "previousValues": null,
+      "newValues": {
+        "_id": "7462fa523376af8d3b924a3b",
+        "name": "New Business Corp",
+        "organization": "",
+        "billingAddress": "Road 12, Banjara Hills, Hyderabad",
+        "shippingAddress": "",
+        "gstin": "36BBBBB7777B1Z9",
+        "phone": "9123456789",
+        "email": "info@newbiz.com",
+        "state": "Andhra Pradesh",
+        "stateCode": "37",
+        "contactPerson": "",
+        "isDeleted": false,
+        "createdAt": "2026-10-28T13:15:27.898Z",
+        "updatedAt": "2026-10-28T13:15:27.898Z"
+      },
+      "notes": "Added customer New Business Corp",
+      "timestamp": "2026-10-28T13:15:27.657Z",
+      "createdAt": "2026-10-28T13:15:27.923Z",
+      "updatedAt": "2026-10-28T13:15:27.923Z"
+    },
+    {
+      "_id": "49a9786bc87ec0ecf9225d5b",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "CUSTOMER_CREATED",
+      "entityType": "Customer",
+      "entityId": "bbb793b7fa4d26ce67ec0ab3",
+      "previousValues": null,
+      "newValues": {
+        "_id": "bbb793b7fa4d26ce67ec0ab3",
+        "name": "Retail Customer Individual",
+        "organization": "",
+        "billingAddress": "Flat 101, Visakhapatnam",
+        "shippingAddress": "",
+        "gstin": "",
+        "phone": "9988776655",
+        "email": "",
+        "state": "Andhra Pradesh",
+        "stateCode": "37",
+        "contactPerson": "",
+        "isDeleted": false,
+        "createdAt": "2026-10-28T13:15:27.935Z",
+        "updatedAt": "2026-10-28T13:15:27.935Z"
+      },
+      "notes": "Added customer Retail Customer Individual",
+      "timestamp": "2026-10-28T13:15:27.657Z",
+      "createdAt": "2026-10-28T13:15:27.939Z",
+      "updatedAt": "2026-10-28T13:15:27.939Z"
+    },
+    {
+      "_id": "4d395bfa4cf62ea066747a12",
+      "user": "d44095c9c29ad5d1fe3ce72e",
+      "userName": "Hemanth",
+      "action": "INVOICE_ISSUED",
+      "entityType": "Invoice",
+      "entityId": "7ecad90c215e96bb2ffd08b9",
+      "previousValues": null,
+      "newValues": {
+        "invoiceNumber": "RU003",
+        "grandTotal": 5000,
+        "status": "issued"
+      },
+      "notes": "Issued invoice RU003 for New Business Corp (₹5000)",
+      "timestamp": "2026-10-28T13:15:27.657Z",
+      "createdAt": "2026-10-28T13:15:27.965Z",
+      "updatedAt": "2026-10-28T13:15:27.965Z"
     }
   ]
 }

@@ -74,7 +74,7 @@ export default function CustomerModal({ customer, isOpen, onClose, onSuccess }) 
       if (onSuccess) onSuccess(res.data.data);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save customer');
+      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Failed to save customer');
     } finally {
       setIsSubmitting(false);
     }

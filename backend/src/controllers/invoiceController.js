@@ -295,7 +295,7 @@ export const createInvoice = async (req, res, next) => {
     // Editable Invoice Number: Use provided custom number if present, or auto-generate
     let invoiceNumber;
     if (req.body.invoiceNumber && req.body.invoiceNumber.trim()) {
-      const customNum = req.body.invoiceNumber.trim();
+      const customNum = req.body.invoiceNumber.trim().toUpperCase();
       const existing = await Invoice.findOne({ invoiceNumber: customNum, isDeleted: false });
       if (existing) {
         return res.status(400).json({
@@ -377,6 +377,23 @@ export const createInvoice = async (req, res, next) => {
     };
 
     const invoice = await Invoice.create(invoiceData);
+
+    // Keep sequence in sync with any custom or assigned number
+    const seqMatch = String(invoiceNumber).match(/^([A-Za-z]+)(\d+)$/);
+    if (seqMatch) {
+      const pfx = seqMatch[1];
+      const seqVal = parseInt(seqMatch[2], 10);
+      if (!isNaN(seqVal)) {
+        const seqDoc = await InvoiceSequence.findOne({ key: pfx }).lean();
+        if ((seqDoc?.currentSequence || 0) < seqVal) {
+          await InvoiceSequence.findOneAndUpdate(
+            { key: pfx },
+            { $set: { currentSequence: seqVal } },
+            { upsert: true }
+          );
+        }
+      }
+    }
 
     await logAudit({
       user: req.user,

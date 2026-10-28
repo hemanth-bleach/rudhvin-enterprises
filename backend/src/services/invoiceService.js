@@ -1,6 +1,28 @@
 import { InvoiceSequence } from '../models/InvoiceSequence.js';
+import { Invoice } from '../models/Invoice.js';
 import { Company } from '../models/Company.js';
 import { numberToWords } from '../utils/numberToWords.js';
+
+async function getMaxExistingSequence(prefix) {
+  try {
+    const invoices = await Invoice.find({ isDeleted: false }).lean();
+    let maxSeq = 0;
+    const prefixRegex = new RegExp(`^${prefix}(\\d+)$`, 'i');
+    for (const inv of invoices) {
+      if (!inv.invoiceNumber) continue;
+      const match = String(inv.invoiceNumber).trim().match(prefixRegex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    }
+    return maxSeq;
+  } catch (e) {
+    return 0;
+  }
+}
 
 export async function getNextInvoiceNumber(session = null) {
   const company = await Company.findOne().lean();
@@ -8,17 +30,23 @@ export async function getNextInvoiceNumber(session = null) {
   const padding = company?.invoiceNumberPadding || 3;
   const key = prefix;
 
-  const options = { new: true, upsert: true };
-  if (session) options.session = session;
+  const maxExisting = await getMaxExistingSequence(prefix);
+  const seqDoc = await InvoiceSequence.findOne({ key }).lean();
+  let candidateSeq = Math.max(seqDoc?.currentSequence || 0, maxExisting) + 1;
 
-  const seqDoc = await InvoiceSequence.findOneAndUpdate(
-    { key },
-    { $inc: { currentSequence: 1 }, $setOnInsert: { prefix } },
-    options
-  );
-
-  const numStr = String(seqDoc.currentSequence).padStart(padding, '0');
-  return `${prefix}${numStr}`;
+  while (true) {
+    const candidateNum = `${prefix}${String(candidateSeq).padStart(padding, '0')}`;
+    const exists = await Invoice.findOne({ invoiceNumber: candidateNum, isDeleted: false }).lean();
+    if (!exists) {
+      await InvoiceSequence.findOneAndUpdate(
+        { key },
+        { $set: { currentSequence: candidateSeq }, $setOnInsert: { prefix } },
+        { upsert: true, new: true, session }
+      );
+      return candidateNum;
+    }
+    candidateSeq++;
+  }
 }
 
 export async function peekNextInvoiceNumber() {
@@ -27,10 +55,18 @@ export async function peekNextInvoiceNumber() {
   const padding = company?.invoiceNumberPadding || 3;
   const key = prefix;
 
+  const maxExisting = await getMaxExistingSequence(prefix);
   const seqDoc = await InvoiceSequence.findOne({ key }).lean();
-  const nextSeq = (seqDoc?.currentSequence || 0) + 1;
-  const numStr = String(nextSeq).padStart(padding, '0');
-  return `${prefix}${numStr}`;
+  let candidateSeq = Math.max(seqDoc?.currentSequence || 0, maxExisting) + 1;
+
+  while (true) {
+    const candidateNum = `${prefix}${String(candidateSeq).padStart(padding, '0')}`;
+    const exists = await Invoice.findOne({ invoiceNumber: candidateNum, isDeleted: false }).lean();
+    if (!exists) {
+      return candidateNum;
+    }
+    candidateSeq++;
+  }
 }
 
 export function round(value, decimals = 2) {
