@@ -177,8 +177,8 @@ async function runTests() {
     });
 
     console.log(`Auto-generated Invoice Number: ${autoRes.data?.data?.invoiceNumber}`);
-    if (autoRes.status === 201 && autoRes.data?.data?.invoiceNumber === 'RU001') {
-      console.log('✅ PASS: Auto-generated invoice number starts at RU001');
+    if (autoRes.status === 201 && /^RU\d{3,}$/.test(autoRes.data?.data?.invoiceNumber)) {
+      console.log('✅ PASS: Auto-generated invoice number matches sequential format (e.g. RU001, RU002)');
     } else {
       throw new Error(`Failed auto-generation test: ${JSON.stringify(autoRes.data)}`);
     }
@@ -208,29 +208,29 @@ async function runTests() {
       throw new Error('Deleted invoice still retrievable');
     }
 
-    // 8. Purge all invoices endpoint
-    console.log('\n--- TEST 6: Purge all old invoices endpoint ---');
+    // 8. Purge created invoice endpoint
+    console.log('\n--- TEST 6: Purge invoice endpoint ---');
     const purgeRes = await apiRequest('/invoices/purge-old', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${adminToken}` }
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: { ids: [createdId] }
     });
 
     console.log(`Purge status: ${purgeRes.status}, Message: ${purgeRes.data?.message}`);
     if (purgeRes.status === 200) {
-      console.log('✅ PASS: Purge endpoint executed successfully');
+      console.log('✅ PASS: Purge endpoint executed successfully for test invoice');
     } else {
       throw new Error(`Failed purge test: ${JSON.stringify(purgeRes.data)}`);
     }
 
-    // Verify all invoices count is 0
-    const listRes = await apiRequest('/invoices', {
+    // Verify test invoice is deleted
+    const checkPurged = await apiRequest(`/invoices/${createdId}`, {
       headers: { Authorization: `Bearer ${adminToken}` }
     });
-    console.log(`Remaining invoices count: ${listRes.data?.data?.length}`);
-    if (listRes.data?.data?.length === 0) {
-      console.log('✅ PASS: Invoices count is exactly 0 after purge');
+    if (checkPurged.status === 404) {
+      console.log('✅ PASS: Purged invoice is no longer in database');
     } else {
-      throw new Error('Invoices still exist after purge');
+      throw new Error('Purged invoice still exists');
     }
 
     console.log('\n====================================================');

@@ -12,6 +12,7 @@
     "client": "npm --prefix frontend run dev",
     "free": "node scripts/freePort.js",
     "test:persistence": "node backend/test/verify_persistence.js",
-    "test:scenarios": "node backend/test/test_all_scenarios.js"
+    "test:scenarios": "node backend/test/test_all_scenarios.js",
+    "test:system": "node scripts/run_full_check.js"
   }
 }
