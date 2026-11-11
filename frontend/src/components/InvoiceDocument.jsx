@@ -79,7 +79,7 @@ export default function InvoiceDocument({ invoice, className = '' }) {
                 {seller.address || 'D.No.9-6-105/1/3, 2nd Floor, 1st Portion, Mangapuram Colony, Near Kalabharathi, Sivajipalem, LB Colony, Visakhapatnam - 530017.'}
               </p>
               <div className="text-[11px] font-bold text-[#052c6d] mt-1 flex flex-wrap items-center justify-center gap-2">
-                <span>GSTIN: <strong>{seller.gstin || '37DGBPV1007R1ZU'}</strong></span>
+                <span>GSTIN: <strong>{seller.gstin || '37DEIPV1007R1ZU'}</strong></span>
                 <span>•</span>
                 <span>Ph: <strong>{seller.mobile || seller.phone || '+91 9652498933'}</strong></span>
                 <span>•</span>

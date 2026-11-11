@@ -8,7 +8,7 @@ const companyDefaults = {
   phone: '9652498933',
   mobile: '+91 9652498933',
   email: 'rudhvinenterprises@gmail.com',
-  gstin: '37DGBPV1007RIZU',
+  gstin: '37DEIPV1007R1ZU',
   state: 'Andhra Pradesh',
   stateCode: '37',
   bankDetails: {

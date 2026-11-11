@@ -407,7 +407,7 @@ export default function CreateInvoice() {
       companyName: 'RUDHVIN ENTERPRISES',
       address: 'D.No.9-6-105/1/3, 2nd Floor, 1st Portion, Mangapuram Colony, Near Kalabharathi, Sivajipalem, LB Colony, Visakhapatnam - 530017.',
       phone: '7075708933',
-      gstin: '37DGBPV1007RIZU',
+      gstin: '37DEIPV1007R1ZU',
       email: 'rudhvinenterprises@gmail.com',
       bankDetails: {
         accountNumber: '143201000000719',

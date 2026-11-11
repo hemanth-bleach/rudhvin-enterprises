@@ -7,7 +7,7 @@ export const customerSchema = z.object({
   shippingAddress: z.string().optional().nullable().transform(v => (v || '').trim()),
   gstin: z.string().optional().nullable().transform(v => (v || '').trim().toUpperCase()).refine(
     val => !val || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(val),
-    { message: 'Invalid GSTIN format (must be 15 alphanumeric characters, e.g. 37DGBPV1007RIZU)' }
+    { message: 'Invalid GSTIN format (must be 15 alphanumeric characters, e.g. 37DEIPV1007R1ZU)' }
   ),
   phone: z.string().optional().nullable().transform(v => (v || '').trim()),
   email: z.string().optional().nullable().transform(v => (v || '').trim().toLowerCase()).refine(

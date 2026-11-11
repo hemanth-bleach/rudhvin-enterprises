@@ -251,7 +251,7 @@ export function getInvoiceHtml(invoice) {
               ${seller.address || 'D.No.9-6-105/1/3, 2nd Floor, 1st Portion, Mangapuram Colony, Near Kalabharathi,<br>Sivajipalem, LB Colony, Visakhapatnam - 530017.'}
             </div>
             <div style="font-size: 11.5px; color: #052c6d; font-weight: 700; margin-top: 4px;">
-              <span>GSTIN: <strong>${seller.gstin || '37DGBPV1007R1ZU'}</strong></span>
+              <span>GSTIN: <strong>${seller.gstin || '37DEIPV1007R1ZU'}</strong></span>
               &nbsp;&nbsp;•&nbsp;&nbsp;
               <span>Ph: <strong>${seller.mobile || seller.phone || '+91 9652498933'}</strong></span>
               &nbsp;&nbsp;•&nbsp;&nbsp;
